@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Custom color palette */
+:root {
+  --color-slate: #385F71;
+  --color-stone: #BFC3BA;
+  --color-wine: #8B1E3F;
+  --color-coral: #E26D5A;
+  --color-mint: #55D6BE;
+  --color-sand: #F3DE8A;
+  --color-sky: #92DCE5;
+  --color-plum: #77567A;
+}
+
+/* Primary gradient */
+.bg-primary-gradient {
+  @apply from-primary-400 to-primary-500;
+  background-image: linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to));
+}
+
+/* Smooth scrolling for the entire page */
+html {
+  scroll-behavior: smooth;
+}
