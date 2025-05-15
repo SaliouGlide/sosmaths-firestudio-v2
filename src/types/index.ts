@@ -71,13 +71,14 @@ export interface Course {
   teacherId: string;
   studentId: string;
   teacherName: string;
-  teacherAvatar?: string; // Added teacherAvatar property
+  teacherAvatar?: string;
   message: string;
   subject: Subject[];
   level: string;
   status: string;
   proposedDateTime: any;
   createdAt: any;
+  meetingLink?: string; // Added meetingLink property
 }
 
 export interface ScheduledCourse {
