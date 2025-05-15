@@ -269,14 +269,15 @@ function CoursesPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 mt-4">
-                      {course.status === "scheduled" && course.meetingLink && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {course.meetingLink && (
                         <Button 
-                          className="flex-1 flex items-center justify-center"
+                          size="sm"
+                          className="flex items-center justify-center"
                           onClick={() => handleJoinMeeting(course.meetingLink)}
                         >
-                          <Video className="h-4 w-4 mr-2" />
-                          Rejoindre
+                          <Video className="h-4 w-4 mr-1" />
+                          Rejoindre le cours
                         </Button>
                       )}
                       <Link to={`/courses/${course.id}`} className="flex-1">
@@ -284,7 +285,7 @@ function CoursesPage() {
                           variant="outline"
                           className="w-full flex items-center justify-center"
                         >
-                          Détails
+                          Voir les détails
                           <ChevronRight className="h-4 w-4 ml-2" />
                         </Button>
                       </Link>
