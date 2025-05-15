@@ -4,8 +4,10 @@ import { Header } from "../../components/layout/Header";
 import { Footer } from "../../components/layout/Footer";
 import { Button } from "../../components/ui/Button";
 import { Card, CardContent } from "../../components/ui/Card";
-import { Clock, Calendar, Users, User, BookOpenCheck, Loader2, ChevronRight, Star, Search, Filter } from "lucide-react";
+import { Clock, Calendar, Users, User, BookOpenCheck, Loader2, ChevronRight, Star, Search, Filter, Video } from "lucide-react";
 import { getCourseRequests, auth } from "../../firebase";
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { db } from "../../firebase";
 import type { Course } from "../../types";
 
 function CoursesPage() {
