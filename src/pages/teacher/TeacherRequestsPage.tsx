@@ -1,51 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { courseRequests } from '../../utils/mockData';
 import { Calendar, Clock, User, Users, MessageSquare, Globe2 } from 'lucide-react';
+import { db, collection, getDocs, query, where, auth } from '../../firebase';
 
 function TeacherRequestsPage() {
   const [filter, setFilter] = useState<'all' | 'scientific'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const filteredRequests = courseRequests
-    .filter(request => request.status === 'pending')
-    .filter(request => {
-      if (filter === 'scientific') {
-        return request.subjects.some(subject => subject.isScientific);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        const q = query(
+          collection(db, 'requests'),
+          where('status', 'in', ['pending', 'under_review'])
+        );
+        const querySnapshot = await getDocs(q);
+        const fetchedRequests = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          hasApplied: doc.data().appliedTeachers?.includes(auth.currentUser?.uid)
+        }));
+        setRequests(fetchedRequests);
+      } catch (error) {
+        console.error("Error fetching requests:", error);
+      } finally {
+        setLoading(false);
       }
-      return true;
-    })
-    .filter(request => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        request.subjects.some(subject => subject.name.toLowerCase().includes(query)) ||
-        request.level.toLowerCase().includes(query) ||
-        request.description?.toLowerCase().includes(query) ||
-        request.parentName?.toLowerCase().includes(query)
-      );
-    });
+    };
 
-  const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(new Date(dateString));
-  };
+    fetchRequests();
+  }, []);
 
-  const formatTimeSlot = (slot: string) => {
-    switch (slot) {
-      case '8-14': return '8h - 14h';
-      case '14-20': return '14h - 20h';
-      case '20-8': return '20h - 8h';
-      default: return slot;
+  const filteredRequests = requests.filter(request => {
+    if (filter === 'scientific') {
+      return request.subjects.some((subject: any) => subject.isScientific);
     }
-  };
+    return true;
+  }).filter(request => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      request.subjects.some((subject: any) => subject.name.toLowerCase().includes(query)) ||
+      request.level.toLowerCase().includes(query) ||
+      request.description?.toLowerCase().includes(query) ||
+      request.parentName?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-white">
@@ -88,7 +95,7 @@ function TeacherRequestsPage() {
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {request.subjects.map((subject) => (
+                          {request.subjects.map((subject: any) => (
                             <span
                               key={subject.id}
                               className="px-2 py-1 bg-primary-50 text-primary-700 rounded-full text-sm"
@@ -105,14 +112,14 @@ function TeacherRequestsPage() {
                             Parent: {request.parentName}
                           </p>
                         )}
-                        <div className="flex items-center mt-1 text-secondary-dark-blue text-sm">
-                          <Clock className="h-4 w-4 mr-1" />
-                          <span>Créée le {formatDate(request.createdAt)}</span>
-                        </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded-full text-sm">
-                          Nouveau
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          request.hasApplied 
+                            ? 'bg-gray-100 text-gray-700'
+                            : 'bg-primary-50 text-primary-700'
+                        }`}>
+                          {request.hasApplied ? 'Déjà postulé' : 'Nouveau'}
                         </span>
                       </div>
                     </div>
@@ -131,7 +138,7 @@ function TeacherRequestsPage() {
                       <div className="flex items-center text-secondary-dark-blue">
                         <Clock className="h-5 w-5 mr-2" />
                         <span className="text-sm">
-                          {formatTimeSlot(request.timeSlot)}
+                          {request.timeSlot}
                         </span>
                       </div>
                       <div className="flex items-center text-secondary-dark-blue">
@@ -160,11 +167,13 @@ function TeacherRequestsPage() {
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Contacter
                       </Button>
-                      <Link to={`/requests/${request.id}`}>
-                        <Button>
-                          Postuler
-                        </Button>
-                      </Link>
+                      {!request.hasApplied && (
+                        <Link to={`/requests/${request.id}`}>
+                          <Button>
+                            Postuler
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
