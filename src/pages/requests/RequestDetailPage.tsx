@@ -21,7 +21,6 @@ const RequestDetailPage = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'applications'>(() => {
-    // Get the tab from location state or default to 'details'
     return location.state?.tab || 'details';
   });
 
@@ -55,7 +54,6 @@ const RequestDetailPage = () => {
       if (!id) {
         setIsLoading(false);
         console.error('Id is missing');
-
         return;
       }
 
@@ -70,7 +68,6 @@ const RequestDetailPage = () => {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-
           const data = docSnap.data();
           const requestData: CourseRequest = {
             id: docSnap.id,
@@ -117,59 +114,62 @@ const RequestDetailPage = () => {
       return;
     }
 
+    if (!application.proposedDateTime || typeof application.proposedDateTime.toDate !== 'function') {
+      console.error('Invalid proposed date time');
+      setError('Invalid proposed date time');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      if (application.proposedDateTime) {
-        // Generate unique meeting link based on request ID
-        const meetingLink = `https://meet.jit.si/${id}`;
+      // Generate unique meeting link based on request ID
+      const meetingLink = `https://meet.jit.si/${id}`;
 
-        // Calculate end time (1 hour after start time)
-        const startTime = new Date(application.proposedDateTime);
-        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour in milliseconds
+      // Convert Firebase Timestamp to JavaScript Date
+      const startTime = application.proposedDateTime.toDate();
+      
+      // Calculate end time (1 hour after start time)
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
-        const courseData = {
-          teacherId: application.teacherId,
-          requestId: id,
-          studentId: request.parentId,
-          teacherName: application.teacherName,
-          message: application.message,
-          subject: request.subjects,
-          level: request.level,
-          status: 'pending',
-          proposedDateTime: application.proposedDateTime,
-          endDateTime: endTime, // Add end time
-          createdAt: Timestamp.now(),
-          meetingLink: meetingLink
-        };
+      const courseData = {
+        teacherId: application.teacherId,
+        requestId: id,
+        studentId: request.parentId,
+        teacherName: application.teacherName,
+        message: application.message,
+        subject: request.subjects,
+        level: request.level,
+        status: 'pending',
+        proposedDateTime: Timestamp.fromDate(startTime),
+        endDateTime: Timestamp.fromDate(endTime),
+        createdAt: Timestamp.now(),
+        meetingLink: meetingLink
+      };
 
-        await addDoc(collection(db, 'courses'), courseData);
-        console.log('New course document created successfully.');
+      await addDoc(collection(db, 'courses'), courseData);
+      console.log('New course document created successfully.');
 
-        // Update request status and assigned teacher
-        await updateDoc(doc(db, 'requests', id), {
-          status: 'assigned',
-          assignedTeacherId: application.teacherId,
-          assignedTeacherName: application.teacherName,
-        });
+      // Update request status and assigned teacher
+      await updateDoc(doc(db, 'requests', id), {
+        status: 'assigned',
+        assignedTeacherId: application.teacherId,
+        assignedTeacherName: application.teacherName,
+      });
 
-        // Update local request state
-        setRequest((prevRequest) => ({
-          ...prevRequest,
-          status: 'assigned',
-          assignedTeacherId: application.teacherId,
-          assignedTeacherName: application.teacherName,
-        }));
+      // Update local request state
+      setRequest((prevRequest) => ({
+        ...prevRequest!,
+        status: 'assigned',
+        assignedTeacherId: application.teacherId,
+        assignedTeacherName: application.teacherName,
+      }));
 
-        // Switch to details tab
-        setActiveTab('details');
-        navigate('/courses');
-      } else {
-        console.error('No proposed date and time found for the application');
-        setError('No proposed date and time found for the application')
-      }
+      // Switch to details tab
+      setActiveTab('details');
+      navigate('/courses');
     } catch (error) {
       console.error('Error creating new course document:', error);
-      setError('Error creating new course document:')
+      setError('Error creating new course document');
     } finally {
       setIsSubmitting(false);
     }
