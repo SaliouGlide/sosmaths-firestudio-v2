@@ -215,7 +215,7 @@ function TeacherRequestDetailPage() {
         collection(db, 'requests', request.id, 'applications'),
         {
           teacherId: auth.currentUser.uid,
-          teacherName: auth.currentUser.displayName || 'Professeur anonyme',
+          teacherName: auth.currentUser.name || 'Professeur anonyme',
           requestId: request.id,
           studentId: request.parentId,
           proposedDateTime: selectedDateTime,
