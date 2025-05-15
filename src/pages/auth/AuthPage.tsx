@@ -4,7 +4,7 @@ import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { sendLoginLink, isSignInWithEmailLink, completeLoginWithLink, auth } from '../../firebase'; // Corrected import name
+import { sendLoginLink, isSignInWithEmailLink, completeLoginWithLink, auth } from '../../firebase';
 
 interface AuthPageProps{
   onLogin: (type: 'parent' | 'teacher') => void;
@@ -24,7 +24,7 @@ function AuthPage({ onLogin }: AuthPageProps) {
 
   useEffect(() => {
     const href = window.location.href;
-    if (isSignInWithEmailLink(auth, href)) { // Corrected function call
+    if (isSignInWithEmailLink(auth, href)) {
       const savedEmail = window.localStorage.getItem('emailForSignIn');
       if (savedEmail) {
         setIsLoading(true);
@@ -51,32 +51,33 @@ function AuthPage({ onLogin }: AuthPageProps) {
     setError('');
     
     try {
-        if (authMethod === 'emailLink') {
-            await sendLoginLink(email);
-            setStep('otp');
-            window.localStorage.setItem('emailForSignIn', email);
-        } else {
-          if (!password) {
-              setError('Password is required.');
-              setIsLoading(false);
-              return;
-          }
-          
+      if (authMethod === 'emailLink') {
+        await sendLoginLink(email);
+        setStep('otp');
+        window.localStorage.setItem('emailForSignIn', email);
+      } else {
+        if (!password) {
+          setError('Password is required.');
+          setIsLoading(false);
+          return;
+        }
+        
         if (isRegistering) {
           await createUserWithEmailAndPassword(auth, email, password);
         } else {
           await signInWithEmailAndPassword(auth, email, password);
         }
         
+        // Wait for auth state to update and user data to be set in localStorage
+        await new Promise(resolve => setTimeout(resolve, 1000));
         onLogin(userType);
         navigate('/');
       }
     } catch (error: any) {
-        console.error('Authentication error:', error);
-        setError(error.message || 'An error occurred.');
+      console.error('Authentication error:', error);
+      setError(error.message || 'An error occurred.');
     } finally {
       setIsLoading(false);
-
     }
   };
 
@@ -158,14 +159,13 @@ function AuthPage({ onLogin }: AuthPageProps) {
                 
                 <div className='mt-2 text-center'>
                   <button
-                      type="button"
-                      onClick={() => setIsRegistering(!isRegistering)}
-                      className="text-primary-600 hover:text-primary-700 text-sm"
+                    type="button"
+                    onClick={() => setIsRegistering(!isRegistering)}
+                    className="text-primary-600 hover:text-primary-700 text-sm"
                   >
-                      {isRegistering ? 'Already have an account? Sign in' : 'No account? Sign up'}
+                    {isRegistering ? 'Already have an account? Sign in' : 'No account? Sign up'}
                   </button>
-              </div>
-                
+                </div>
               </div>
             )}
 

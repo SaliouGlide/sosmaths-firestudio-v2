@@ -24,7 +24,7 @@ import TeacherPlanningPage from './pages/teacher/TeacherPlanningPage';
 import TeacherProfileEditPage from './pages/teacher/TeacherProfileEditPage';
 import TeacherStudentsPage from './pages/teacher/TeacherStudentsPage';
 
-import { Toaster } from 'sonner'; // Import Toaster
+import { Toaster } from 'sonner';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -40,13 +40,12 @@ function App() {
 
         try {
           const userData = await getUserProfile(user.uid);
-          
-          
-          localStorage.setItem('user_type', userData.userType || 'parent');
-          localStorage.setItem('user_data', JSON.stringify(userData));
+          if (userData) {
+            localStorage.setItem('user_type', userData.userType || 'parent');
+            localStorage.setItem('user_data', JSON.stringify({ ...userData, id: user.uid }));
+          }
         } catch (error) {
           console.error('Error fetching and storing user data:', error);
-
         }
       } else {
         localStorage.removeItem('user_data');
@@ -57,27 +56,31 @@ function App() {
     return () => unsubscribe();
   }, []);
   
-  const login = (type: 'parent' | 'teacher') => {
-    const user_data_str = localStorage.getItem('user_data') || '{}';
-    const user_data = JSON.parse(user_data_str);
-    if (!user_data || !user_data.id) {
-      console.error("user_data or user_data.id is undefined");
+  const login = async (type: 'parent' | 'teacher') => {
+    if (!auth.currentUser) {
+      console.error("No authenticated user found");
       return;
     }
 
-    updateUserProfile(user_data.id, {
-      userType: type,
-    }).catch((error) => {
-    });
-
-    localStorage.setItem('user_type', type );
-    setUserType(type);
+    const userId = auth.currentUser.uid;
+    
+    try {
+      await updateUserProfile(userId, {
+        userType: type,
+      });
+      
+      localStorage.setItem('user_type', type);
+      setUserType(type);
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+    }
   };
   
   const logout = async () => {
     try {
       await auth.signOut();
       localStorage.removeItem('user_type');
+      localStorage.removeItem('user_data');
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Logout error:', error);
