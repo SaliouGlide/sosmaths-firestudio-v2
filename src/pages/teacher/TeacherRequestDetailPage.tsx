@@ -5,7 +5,7 @@ import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Calendar, Clock, User, Users, MessageSquare, Globe2, Phone, BookOpen } from 'lucide-react';
-import { db, doc, getDoc, collection, addDoc, serverTimestamp, auth, updateDoc, getDocs, query, where, arrayUnion, getUserProfile } from '../../firebase';
+import { db, doc, getDoc, collection, addDoc, serverTimestamp, auth, updateDoc, getDocs, query, where } from '../../firebase'; // Added imports
 import type { CourseRequest } from '../../types';
 import { toast } from 'sonner';
 
@@ -15,7 +15,7 @@ function TeacherRequestDetailPage() {
   const [request, setRequest] = useState<CourseRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasApplied, setHasApplied] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false); // New state
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(null);
@@ -63,7 +63,8 @@ function TeacherRequestDetailPage() {
            };
 
           setRequest(fetchedRequest);
-           if (auth.currentUser) {
+           // Check application status after fetching request details
+          if (auth.currentUser) {
             const hasAlreadyApplied = await checkApplicationStatus(fetchedRequest.id, auth.currentUser.uid);
             setHasApplied(hasAlreadyApplied);
           }
@@ -82,7 +83,8 @@ function TeacherRequestDetailPage() {
     fetchRequest();
   }, [id]);
 
-   const formatDate = (dateString: string | Date, options?: Intl.DateTimeFormatOptions) => {
+   // Modified formatDate to handle different formats
+  const formatDate = (dateString: string | Date, options?: Intl.DateTimeFormatOptions) => {
      if (!dateString) return 'N/A';
      try {
       const date = (dateString instanceof Date) ? dateString : new Date(dateString);
@@ -91,6 +93,7 @@ function TeacherRequestDetailPage() {
         month: 'long',
         year: 'numeric',
       };
+       // Merge default options with provided options
       const finalOptions = { ...defaultOptions, ...options };
 
       return new Intl.DateTimeFormat('fr-FR', finalOptions).format(date);
@@ -109,21 +112,25 @@ function TeacherRequestDetailPage() {
     }
   };
 
+  // Function to generate time options within a time slot (in 30-minute increments)
   const generateTimeOptions = (timeSlot: string, date: Date): Date[] => {
     const times: Date[] = [];
     const [startHour, endHour] = timeSlot.split('-').map(Number);
 
     if (isNaN(startHour) || isNaN(endHour)) return [];
 
+    // Create a date object for the start of the selected date, set to the beginning of the time slot
     const startTime = new Date(date);
     startTime.setHours(startHour, 0, 0, 0);
 
     const endTime = new Date(date);
+    // Adjust end time for overnight slots
     if (startHour >= endHour) {
       endTime.setDate(endTime.getDate() + 1);
     }
     endTime.setHours(endHour, 0, 0, 0);
 
+    // Generate times in 30-minute increments
     let currentTime = new Date(startTime);
     while (currentTime.getTime() < endTime.getTime()) {
       times.push(new Date(currentTime));
@@ -134,13 +141,18 @@ function TeacherRequestDetailPage() {
   };
 
   const handleDateSelect = (dateString: string) => {
-     const date = new Date(dateString);
+     const date = new Date(dateString); // Convert string to Date object
+     // When a new date is selected, reset the time selection and set the new date (time is midnight)
+     // preserve the existing time if possible when changing date, otherwise set to beginning of time slot?
+     // For now, let's just set the date and clear the time.
      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
      setSelectedDateTime(dateOnly);
   };
 
    const handleTimeSelect = (time: Date) => {
-     if (!selectedDateTime) return;
+     // When a time is selected, update the selectedDateTime with the full date and time
+     // Need to combine the selected date (from selectedDateTime) with the selected time
+     if (!selectedDateTime) return; // Should not happen if UI is correct
 
      const finalDateTime = new Date(selectedDateTime);
      finalDateTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
@@ -150,6 +162,7 @@ function TeacherRequestDetailPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validation des champs obligatoires
     if (!auth.currentUser) {
       toast.error('Vous devez être connecté pour postuler');
       return;
@@ -165,12 +178,14 @@ function TeacherRequestDetailPage() {
       return;
     }
 
+    // Vérification que la date sélectionnée est dans le futur
     if (selectedDateTime < new Date()) {
       toast.warning('Veuillez sélectionner une date future');
       return;
     }
 
-    if (request?.availableDates && request.availableDates.length > 0) {
+    // Vérification que la date fait partie des disponibilités proposées
+    if (request.availableDates && request.availableDates.length > 0) {
       const isDateAvailable = request.availableDates.some(availDate => {
         const availableDate = new Date(availDate);
         return (
@@ -190,20 +205,17 @@ function TeacherRequestDetailPage() {
     const toastId = toast.loading('Envoi de votre candidature...');
 
     try {
+      // Vérification supplémentaire pour TypeScript
       if (!request?.id) {
         throw new Error('Requête invalide');
       }
 
-      const teacherProfile = await getUserProfile(auth.currentUser.uid);
-      if (!teacherProfile || !teacherProfile.name) {
-        throw new Error('Profil du professeur introuvable');
-      }
-
+      // Enregistrement dans Firestore
       const applicationRef = await addDoc(
         collection(db, 'requests', request.id, 'applications'),
         {
           teacherId: auth.currentUser.uid,
-          teacherName: teacherProfile.name,
+          teacherName: auth.currentUser.name || 'Professeur anonyme',
           requestId: request.id,
           studentId: request.parentId,
           proposedDateTime: selectedDateTime,
@@ -214,22 +226,33 @@ function TeacherRequestDetailPage() {
         }
       );
 
+      // Mettre à jour le statut de la demande si nécessaire
       await updateDoc(doc(db, 'requests', request.id), {
         status: 'under_review',
-        appliedTeachers: arrayUnion(auth.currentUser.uid),
         updatedAt: serverTimestamp(),
       });
 
-      setHasApplied(true);
-
+      // Succès
       toast.success('Candidature envoyée avec succès !', {
         id: toastId,
+        action: {
+          label: 'Voir',
+          onClick: () => navigate(`/teacher/applications/${applicationRef.id}`),
+        },
       });
 
-      navigate('/');
+      // Réinitialisation du formulaire
+      setMessage('');
+      setSelectedDateTime(null);
+
+      // Redirection après un délai
+      setTimeout(() => {
+        navigate('/teacher/requests');
+      }, 1500);
 
     } catch (error) {
       console.error("Erreur d'envoi:", error);
+
       let errorMessage = "Une erreur est survenue";
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -240,6 +263,7 @@ function TeacherRequestDetailPage() {
       toast.error(`Échec de l'envoi: ${errorMessage}`, {
         id: toastId,
       });
+
     } finally {
       setIsSubmitting(false);
     }
@@ -277,9 +301,11 @@ function TeacherRequestDetailPage() {
 
       <main className="container mx-auto px-4 pt-20 pb-24">
         <div className="max-w-2xl mx-auto">
+          {/* Request Details Card */}
           <Card className="mb-6 shadow-md">
             <CardContent className="p-6 space-y-6">
 
+              {/* Top Section: Subjects, Level, Created At, Status */}
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex flex-wrap gap-2 mb-2">
@@ -296,7 +322,7 @@ function TeacherRequestDetailPage() {
                   <div className="flex items-center mt-2 text-secondary-dark-blue">
                     <Clock className="h-4 w-4 mr-1" />
                     <span className="text-sm">
-                      Créée le {formatDate(request.createdAt)}
+                      Créée le {formatDate(request.createdAt)} {/* No options needed here, time is excluded by default options */}
                     </span>
                   </div>
                 </div>
@@ -305,14 +331,17 @@ function TeacherRequestDetailPage() {
                 </span>
               </div>
 
+              {/* Description Section */}
               <div>
                 <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Description</h2>
                 <p className="text-secondary-dark-blue">{request.description || 'Aucune description fournie.'}</p>
               </div>
 
+              {/* Key Details Grid */}
               <div>
                 <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Détails de la demande</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-secondary-dark-blue text-sm">
+                   {/* Type */}
                   <div className="flex items-center">
                     {request.type === 'individual' ? (
                       <>
@@ -328,16 +357,19 @@ function TeacherRequestDetailPage() {
                        <span className="text-gray-500">Type non spécifié</span>
                     )}
                   </div>
+                   {/* Frequency */}
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-2 text-gray-500" />
                     <span>
                       {request.hoursPerWeek ? `${request.hoursPerWeek}h/semaine` : 'Fréquence non spécifiée'}
                     </span>
                   </div>
+                   {/* Time Slot Display */}
                    <div className="flex items-center">
                     <Clock className="h-4 w-4 mr-2 text-gray-500" />
                     <span>Plage horaire : {formatTimeSlot(request.timeSlot)}</span>
                   </div>
+                  {/* Language */}
                   <div className="flex items-center">
                     <Globe2 className="h-4 w-4 mr-2 text-gray-500" />
                     <span>
@@ -347,6 +379,7 @@ function TeacherRequestDetailPage() {
                 </div>
               </div>
 
+              {/* Parent Contact Section */}
               {request.parentName && (
                 <div>
                   <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Contact parent</h2>
@@ -373,6 +406,7 @@ function TeacherRequestDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Application Card */}
           <Card className="shadow-md">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-4 text-secondary-dark-blue">Postuler pour cette demande</h2>
@@ -380,13 +414,17 @@ function TeacherRequestDetailPage() {
               {hasApplied ? (
                 <div className='text-center text-secondary-dark-blue'>Vous avez déjà postulé à cette demande</div>
               ) : (
+                
+              
                 <form onSubmit={handleSubmit}>
+                  {/* Availabilities Section - Now Selectable in Application Card */}
                   <div className="mb-4">
                     <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Sélectionnez une date parmi les disponibilités proposées :</h2>
                     <div className="space-y-2">
                       {(request?.availableDates || []).length > 0 ? (
                         (request?.availableDates || []).map((dateString: string, index: number) => {
-                          const date = new Date(dateString);
+                          const date = new Date(dateString); // Convert string to Date object
+                          // Compare only the date part for highlighting
                           const isSelectedDate = selectedDateTime ?
                             new Date(selectedDateTime.getFullYear(), selectedDateTime.getMonth(), selectedDateTime.getDate()).getTime() ===
                             new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() : false;
@@ -395,9 +433,9 @@ function TeacherRequestDetailPage() {
                             key={index}
                             className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                               isSelectedDate
-                                ? 'border-primary-500 bg-primary-100'
+                                ? 'border-primary-500 bg-primary-100' // Highlight selected date
                                 : dateString === request?.preferredDate
-                                ? 'border-primary-200 bg-primary-50 hover:border-primary-300'
+                                ? 'border-primary-200 bg-primary-50 hover:border-primary-300' // Highlight preferred date
                                   : 'border-gray-200 bg-white hover:border-gray-300'
                             }`}
                             onClick={() => handleDateSelect(dateString)}
@@ -421,6 +459,7 @@ function TeacherRequestDetailPage() {
                     </div>
                   </div>
 
+                  {/* Time Selection Section - Moved to Application Card */}
                   {selectedDateTime && request?.timeSlot && request?.availableDates.length > 0 && (
                     <div className="mb-4">
                       <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Sélectionnez une heure ({formatTimeSlot(request.timeSlot)}) :</h2>
@@ -456,7 +495,7 @@ function TeacherRequestDetailPage() {
                       onChange={(e) => setMessage(e.target.value)}
                       className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Présentez-vous et expliquez comment vous pouvez aider l'élève..."
-                      required
+                      required // Make the textarea required
                     />
                   </div>
 
@@ -471,7 +510,7 @@ function TeacherRequestDetailPage() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || !selectedDateTime || !message.trim() || hasApplied}
+                      disabled={isSubmitting || !selectedDateTime || !message.trim() || hasApplied} // Disable if submitting, no date/time, empty message, or has applied
                       className="flex items-center"
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
@@ -479,7 +518,7 @@ function TeacherRequestDetailPage() {
                     </Button>
                   </div>
                 </form>
-              )}
+                  )}
 
             </CardContent>
           </Card>
