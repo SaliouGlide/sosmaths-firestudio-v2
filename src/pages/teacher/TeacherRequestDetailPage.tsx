@@ -5,10 +5,9 @@ import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Calendar, Clock, User, Users, MessageSquare, Globe2, Phone, BookOpen } from 'lucide-react';
-import { db, doc, getDoc, collection, addDoc, serverTimestamp, auth, updateDoc, getDocs, query, where, arrayUnion } from '../../firebase';
+import { db, doc, getDoc, collection, addDoc, serverTimestamp, auth, updateDoc, getDocs, query, where, arrayUnion, getUserProfile } from '../../firebase';
 import type { CourseRequest } from '../../types';
 import { toast } from 'sonner';
-import { getUserProfile } from '../../utils/user';
 
 function TeacherRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
