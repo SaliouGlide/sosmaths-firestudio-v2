@@ -4,9 +4,9 @@ import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { scheduledCourses, teachers } from '../../utils/mockData';
+import { scheduledCourses } from '../../utils/mockData';
 import { Calendar, Clock, Video, MessageSquare, Star, BookOpen, Users, Loader2 } from 'lucide-react';
-import { getTeacherRequests } from '../../firebase';
+import { getTeacherRequests, auth } from '../../firebase';
 import type { CourseRequest } from '../../types';
 
 function TeacherDashboardPage() {
@@ -30,6 +30,10 @@ function TeacherDashboardPage() {
     };
     fetchRequests();
   }, []);
+
+  const hasTeacherApplied = (request: CourseRequest) => {
+    return request.appliedTeachers?.includes(auth.currentUser?.uid || '');
+  };
 
   if (isLoading) {
     return (
@@ -60,8 +64,8 @@ function TeacherDashboardPage() {
     );
   }
 
-  const currentTeacher = teachers[0];
-  const upcomingCourses = scheduledCourses.filter(c => c.teacherId === currentTeacher.id && c.status === 'scheduled');
+  const currentTeacher = auth.currentUser;
+  const upcomingCourses = scheduledCourses.filter(c => c.teacherId === currentTeacher?.uid && c.status === 'scheduled');
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
     return `${hours}h${minutes !== '00' ? minutes : ''}`;
@@ -75,13 +79,13 @@ function TeacherDashboardPage() {
           {/* Welcome Section */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-center space-x-4">
-              <img src={currentTeacher.avatar} alt={currentTeacher.name} className="h-16 w-16 rounded-full object-cover" />
+              <img src={currentTeacher?.photoURL || ''} alt={currentTeacher?.displayName} className="h-16 w-16 rounded-full object-cover" />
               <div>
-                <h1 className="text-2xl font-bold text-secondary-dark-blue">Bonjour, {currentTeacher.name}</h1>
+                <h1 className="text-2xl font-bold text-secondary-dark-blue">Bonjour, {currentTeacher?.displayName}</h1>
                 <div className="flex items-center mt-1">
                   <Star className="h-4 w-4 text-amber-400 fill-current" />
                   <span className="ml-1 text-sm text-secondary-dark-blue">
-                    {currentTeacher.rating.toFixed(1)} ({currentTeacher.reviewCount} avis)
+                    4.5 (24 avis)
                   </span>
                 </div>
               </div>
@@ -188,8 +192,12 @@ function TeacherDashboardPage() {
                           </h3>
                           <p className="text-sm text-secondary-dark-blue">Niveau: {request.level}</p>
                         </div>
-                        <span className="text-sm text-warning-600 bg-warning-50 px-2 py-1 rounded">
-                          Nouveau
+                        <span className={`text-sm px-2 py-1 rounded-full ${
+                          hasTeacherApplied(request)
+                            ? 'bg-gray-100 text-gray-700'
+                            : 'text-warning-600 bg-warning-50'
+                        }`}>
+                          {hasTeacherApplied(request) ? 'Déjà postulé' : 'Nouveau'}
                         </span>
                       </div>
                       <p className="text-sm text-secondary-dark-blue mb-3">{request.description}</p>

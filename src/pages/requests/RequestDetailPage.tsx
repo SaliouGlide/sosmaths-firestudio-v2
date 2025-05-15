@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Button } from '../../components/ui/Button';
 import { collection, doc, getDoc, query, getDocs, Timestamp, addDoc, updateDoc } from 'firebase/firestore';
-import { Calendar, Clock, User, Users, BookOpenCheck, Loader2, Book } from 'lucide-react';
+import { Calendar, Clock, User, Users, BookOpen, Loader2 } from 'lucide-react';
 import { format, formatDistanceToNow, isDate } from 'date-fns';
 import { Card } from '../../components/ui/Card';
-import { db,  } from '../../firebase';
-import { fr, } from 'date-fns/locale';
+import { db } from '../../firebase';
+import { fr } from 'date-fns/locale';
 import type { CourseRequest, Application } from '../../types';
 
 const RequestDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [request, setRequest] = useState<CourseRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'applications'>('details');
-
+  const [activeTab, setActiveTab] = useState<'details' | 'applications'>(() => {
+    // Get the tab from location state or default to 'details'
+    return location.state?.tab || 'details';
+  });
 
   const fetchApplicationsForRequest = async (requestId: string) => {
     try {
@@ -88,11 +91,9 @@ const RequestDetailPage = () => {
                   ? data.preferredDate.toDate().toISOString()
                   : (typeof data.preferredDate === 'string' ? data.preferredDate : ''))
               : '',
-            // Ensure assignedTeacherId and assignedTeacherName are loaded
             assignedTeacherId: data.assignedTeacherId || null,
             assignedTeacherName: data.assignedTeacherName || null,
           };
-
 
           setRequest(requestData);
         } else {
@@ -108,6 +109,71 @@ const RequestDetailPage = () => {
 
     fetchRequest();
   }, [id]);
+
+  const handleSubmit = async (application: Application) => {
+    if (!request || !request.parentId) {
+      console.error('Request or parentId is missing');
+      setError('Request or parentId is missing');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (application.proposedDateTime) {
+        // Generate unique meeting link based on request ID
+        const meetingLink = `https://meet.jit.si/${id}`;
+
+        // Calculate end time (1 hour after start time)
+        const startTime = new Date(application.proposedDateTime);
+        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour in milliseconds
+
+        const courseData = {
+          teacherId: application.teacherId,
+          requestId: id,
+          studentId: request.parentId,
+          teacherName: application.teacherName,
+          message: application.message,
+          subject: request.subjects,
+          level: request.level,
+          status: 'pending',
+          proposedDateTime: application.proposedDateTime,
+          endDateTime: endTime, // Add end time
+          createdAt: Timestamp.now(),
+          meetingLink: meetingLink
+        };
+
+        await addDoc(collection(db, 'courses'), courseData);
+        console.log('New course document created successfully.');
+
+        // Update request status and assigned teacher
+        await updateDoc(doc(db, 'requests', id), {
+          status: 'assigned',
+          assignedTeacherId: application.teacherId,
+          assignedTeacherName: application.teacherName,
+        });
+
+        // Update local request state
+        setRequest((prevRequest) => ({
+          ...prevRequest,
+          status: 'assigned',
+          assignedTeacherId: application.teacherId,
+          assignedTeacherName: application.teacherName,
+        }));
+
+        // Switch to details tab
+        setActiveTab('details');
+        navigate('/courses');
+      } else {
+        console.error('No proposed date and time found for the application');
+        setError('No proposed date and time found for the application')
+      }
+    } catch (error) {
+      console.error('Error creating new course document:', error);
+      setError('Error creating new course document:')
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -150,6 +216,7 @@ const RequestDetailPage = () => {
     }
     return format(dateToFormat, "dd MMMM yyyy", { locale: fr });
   };
+
   const formatDateTime = (timestamp: Timestamp | null | undefined) => {
     if (!timestamp) {
       return "Date inconnue";
@@ -163,8 +230,6 @@ const RequestDetailPage = () => {
     const formattedDate = format(date, "EEEE dd MMMM 'à' HH:mm", { locale: fr });
 
     return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-
-
   };
 
   const getFrequencyText = (hoursPerWeek: number | undefined) => {
@@ -188,68 +253,7 @@ const RequestDetailPage = () => {
     }
   };
 
-  const handleSubmit = async (application: Application) => {
-    if (!request || !request.parentId) {
-      console.error('Request or parentId is missing');
-      setError('Request or parentId is missing');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (application.proposedDateTime) {
-        // Generate unique meeting link based on request ID
-        const meetingLink = `https://meet.jit.si/${id}`;
-
-        const courseData = {
-          teacherId: application.teacherId,
-          requestId: id,
-          studentId: request.parentId,
-          teacherName: application.teacherName,
-          message: application.message,
-          subject: request.subjects,
-          level: request.level,
-          status: 'pending',
-          proposedDateTime: application.proposedDateTime,
-          createdAt: Timestamp.now(),
-          meetingLink: meetingLink // Add meeting link to course data
-        };
-        await addDoc(collection(db, 'courses'), courseData);
-        console.log('New course document created successfully.');
-
-        // Update request status and assigned teacher
-        await updateDoc(doc(db, 'requests', id), {
-          status: 'assigned',
-          assignedTeacherId: application.teacherId,
-          assignedTeacherName: application.teacherName,
-        });
-
-        // Update local request state
-        setRequest((prevRequest) => ({
-          ...prevRequest,
-          status: 'assigned',
-          assignedTeacherId: application.teacherId,
-          assignedTeacherName: application.teacherName,
-        }));
-
-        // Switch to details tab
-        setActiveTab('details');
-
-      } else {
-        console.error('No proposed date and time found for the application');
-        setError('No proposed date and time found for the application')
-      }
-    } catch (error) {
-      console.error('Error creating new course document:', error);
-      setError('Error creating new course document:')
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-
   if (error || !request) {
-    // This handles the case where the request isn't found or there was a major fetch error
     return (
       <div className="min-h-screen bg-white">
         <Header title="Détails de la demande" showBackButton />
@@ -278,7 +282,7 @@ const RequestDetailPage = () => {
                     {request.subjects?.map(subject => subject.name).join(', ') ?? 'Matière non spécifiée'}
                   </h1>
                   <div className="flex items-center mt-1 text-secondary-dark-blue mb-1">
-                    <Book className="h-4 w-4 mr-1" />
+                    <BookOpen className="h-4 w-4 mr-1" />
                     <span>Niveau {request.level}</span>
                   </div>
                 </div>
@@ -293,7 +297,7 @@ const RequestDetailPage = () => {
             </div>
 
             {request.status !== 'assigned' && (
-              <div className="border-b border-gray-200"> {/* This div provides the bottom border for the tabs only when they are visible */}
+              <div className="border-b border-gray-200">
                 <div className="flex">
                   <button
                     className={`flex-1 px-4 py-2 text-sm font-medium border-b-2 ${
@@ -327,7 +331,6 @@ const RequestDetailPage = () => {
             {activeTab === 'details' || request.status === 'assigned' ? (
               <div className="p-4">
                 <div className="space-y-6">
-                  {/* Display assigned teacher information */}
                   {request.status === 'assigned' && request.assignedTeacherName && (
                     <div className="p-4 bg-primary-50 rounded-lg shadow-md">
                       <h3 className="text-base font-semibold text-primary-800 mb-2">Professeur</h3>
@@ -376,7 +379,7 @@ const RequestDetailPage = () => {
                       </div>
 
                       <div className="flex items-center">
-                        <BookOpenCheck className="h-5 w-5 mr-2 text-gray-500" />
+                        <BookOpen className="h-5 w-5 mr-2 text-gray-500" />
                         <span>Langue: {getTeachingLanguageText(request.teachingLanguage)}</span>
                       </div>
 
@@ -416,7 +419,6 @@ const RequestDetailPage = () => {
                     </div>
                   </div>
 
-                  {/* Only show cancel button if status is pending */}
                   {request.status === 'pending' && (
                     <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                       <Button onClick={() => navigate('/requests')} variant="outline">
@@ -426,7 +428,7 @@ const RequestDetailPage = () => {
                         variant="destructive"
                         onClick={() => {
                           if (confirm('Êtes-vous sûr de vouloir annuler cette demande ?')) {
-                            navigate('/requests'); // Or implement actual cancel logic
+                            navigate('/requests');
                           }
                         }}
                       >
@@ -437,8 +439,6 @@ const RequestDetailPage = () => {
                 </div>
               </div>
             ) : (
-              // This part is for activeTab === 'applications' and request.status !== 'assigned'
-              // It will not be rendered if request.status === 'assigned' due to the outer condition for tabs
               <div className="p-4">
                 {(!isLoading && request) ? (
                   applications.length === 0 ? (
@@ -458,7 +458,6 @@ const RequestDetailPage = () => {
                           key={application.id}
                           className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden transition-all hover:shadow-lg"
                         >
-                          {/* Header */}
                           <div className="p-5 border-b border-gray-100">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4">
@@ -477,14 +476,12 @@ const RequestDetailPage = () => {
                             </div>
                           </div>
 
-                          {/* Message */}
                           <div className="p-5">
                             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                               <p className="text-secondary-dark-blue italic">{application.message}</p>
                             </div>
                           </div>
 
-                          {/* Proposed Date */}
                           <div className="px-5 py-4">
                             <div className="flex gap-3 p-4 bg-blue-50 rounded-lg">
                               <Calendar className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -497,7 +494,6 @@ const RequestDetailPage = () => {
                             </div>
                           </div>
 
-                          {/* Actions */}
                           <div className="px-5 py-4 bg-white-50 border-t border-gray-100 flex justify-end space-x-3">
                             <Button
                               onClick={() => navigate(`/teacher/profile/${application.teacherId}`)}
@@ -506,10 +502,10 @@ const RequestDetailPage = () => {
                             >
                               Voir profil
                             </Button>
-                            <Button onClick={() => handleSubmit(application)}  disabled={isSubmitting} variant="default" size="sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
+                            <Button onClick={() => handleSubmit(application)} disabled={isSubmitting} variant="default" size="sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
                               Accepter
                             </Button>
                           </div>
@@ -517,7 +513,7 @@ const RequestDetailPage = () => {
                       ))}
                     </div>
                   )
-                ) : null /* Don't render applications content if data is still loading */ }
+                ) : null}
               </div>
             )}
           </Card>
