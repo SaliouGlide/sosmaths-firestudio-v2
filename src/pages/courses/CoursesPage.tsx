@@ -128,6 +128,10 @@ function CoursesPage() {
     }
   };
 
+  const handleJoinMeeting = (meetingLink: string) => {
+    window.open(meetingLink, '_blank');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -269,7 +273,7 @@ function CoursesPage() {
                       {course.status === "scheduled" && course.meetingLink && (
                         <Button 
                           className="flex-1 flex items-center justify-center"
-                          onClick={() => window.open(course.meetingLink, '_blank')}
+                          onClick={() => handleJoinMeeting(course.meetingLink)}
                         >
                           <Video className="h-4 w-4 mr-2" />
                           Rejoindre

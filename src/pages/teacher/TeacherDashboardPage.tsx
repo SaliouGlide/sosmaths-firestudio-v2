@@ -4,35 +4,59 @@ import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { scheduledCourses } from '../../utils/mockData';
 import { Calendar, Clock, Video, MessageSquare, Star, BookOpen, Users, Loader2 } from 'lucide-react';
-import { getTeacherRequests, auth } from '../../firebase';
-import type { CourseRequest } from '../../types';
+import { getTeacherRequests, auth, db } from '../../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import type { CourseRequest, Course } from '../../types';
 
 function TeacherDashboardPage() {
   const [requests, setRequests] = useState<CourseRequest[]>([]);
+  const [upcomingCourses, setUpcomingCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchRequests = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
+
+        // Fetch requests
         const fetchedRequests = await getTeacherRequests();
         setRequests(fetchedRequests);
+
+        // Fetch upcoming courses
+        if (auth.currentUser) {
+          const coursesRef = collection(db, 'courses');
+          const q = query(
+            coursesRef,
+            where('teacherId', '==', auth.currentUser.uid),
+            where('status', '==', 'scheduled')
+          );
+          const querySnapshot = await getDocs(q);
+          const courses = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Course[];
+          setUpcomingCourses(courses);
+        }
       } catch (err) {
-        console.error('Error fetching requests:', err);
-        setError('Une erreur est survenue lors du chargement des demandes');
+        console.error('Error fetching data:', err);
+        setError('Une erreur est survenue lors du chargement des données');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchRequests();
+
+    fetchData();
   }, []);
 
   const hasTeacherApplied = (request: CourseRequest) => {
     return request.appliedTeachers?.includes(auth.currentUser?.uid || '');
+  };
+
+  const handleJoinMeeting = (meetingLink: string) => {
+    window.open(meetingLink, '_blank');
   };
 
   if (isLoading) {
@@ -64,13 +88,6 @@ function TeacherDashboardPage() {
     );
   }
 
-  const currentTeacher = auth.currentUser;
-  const upcomingCourses = scheduledCourses.filter(c => c.teacherId === currentTeacher?.uid && c.status === 'scheduled');
-  const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    return `${hours}h${minutes !== '00' ? minutes : ''}`;
-  };
-
   return (
     <div className="min-h-screen bg-white pb-16">
       <Header />
@@ -79,9 +96,13 @@ function TeacherDashboardPage() {
           {/* Welcome Section */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-center space-x-4">
-              <img src={currentTeacher?.photoURL || ''} alt={currentTeacher?.displayName} className="h-16 w-16 rounded-full object-cover" />
+              <div className="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
+                <Users className="h-8 w-8 text-primary-600" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-secondary-dark-blue">Bonjour, {currentTeacher?.displayName}</h1>
+                <h1 className="text-2xl font-bold text-secondary-dark-blue">
+                  Bonjour, {auth.currentUser?.displayName || 'Professeur'}
+                </h1>
                 <div className="flex items-center mt-1">
                   <Star className="h-4 w-4 text-amber-400 fill-current" />
                   <span className="ml-1 text-sm text-secondary-dark-blue">
@@ -144,31 +165,53 @@ function TeacherDashboardPage() {
               </Link>
             </div>
             <div className="space-y-4">
-              {upcomingCourses.slice(0, 3).map((course) => (
-                <Card key={course.id} className="shadow-md">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-medium text-secondary-dark-blue">Cours de {course.teacher.subjects[0]?.name}</h3>
-                        <p className="text-sm text-secondary-dark-blue">Élève: Jean Dupont</p>
-                      </div>
-                      <span className="text-sm text-primary-600 bg-primary-50 px-2 py-1 rounded">
-                        {formatTime(course.startTime)}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="flex items-center">
-                        <Video className="h-4 w-4 mr-1" />
-                        Rejoindre
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex items-center">
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Message
-                      </Button>
-                    </div>
+              {upcomingCourses.length === 0 ? (
+                <Card className="shadow-md">
+                  <CardContent className="p-6 text-center">
+                    <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-secondary-dark-blue">Aucun cours prévu</p>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                upcomingCourses.slice(0, 3).map((course) => (
+                  <Card key={course.id} className="shadow-md">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-medium text-secondary-dark-blue">
+                            {course.subject.map(s => s.name).join(', ')} - {course.level}
+                          </h3>
+                          <p className="text-sm text-secondary-dark-blue">
+                            {new Date(course.proposedDateTime.toDate()).toLocaleString('fr-FR', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'long',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {course.meetingLink && (
+                          <Button 
+                            size="sm" 
+                            className="flex items-center"
+                            onClick={() => handleJoinMeeting(course.meetingLink)}
+                          >
+                            <Video className="h-4 w-4 mr-1" />
+                            Rejoindre
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" className="flex items-center">
+                          <MessageSquare className="h-4 w-4 mr-1" />
+                          Message
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
 
@@ -188,7 +231,9 @@ function TeacherDashboardPage() {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="font-medium text-secondary-dark-blue">
-                            {(request.subjects && request.subjects.length > 0) ? request.subjects.map(subject => subject.name).join(', ') : 'Aucune matière'}
+                            {(request.subjects && request.subjects.length > 0) 
+                              ? request.subjects.map(subject => subject.name).join(', ') 
+                              : 'Aucune matière'}
                           </h3>
                           <p className="text-sm text-secondary-dark-blue">Niveau: {request.level}</p>
                         </div>
