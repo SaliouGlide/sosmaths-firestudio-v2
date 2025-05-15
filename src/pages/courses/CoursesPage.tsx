@@ -303,5 +303,3 @@ function CoursesPage() {
 }
 
 export default CoursesPage;
-
-export default CoursesPage
