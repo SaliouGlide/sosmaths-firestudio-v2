@@ -22,7 +22,6 @@ export type TeachingLanguage = 'french' | 'dutch'
 export type TimeSlot = '8-14' | '14-20' | '20-8';
 
 export interface CourseRequest {
-  assignedTeacherName: boolean;
   id: string;
   parentId?: string;
   parentName?: string;
@@ -36,8 +35,11 @@ export interface CourseRequest {
   hoursPerWeek?: number;
   availableDates: string[];
   preferredDate: string;
-  status: 'pending' | 'assigned' | 'completed' | 'cancelled';
+  status: 'pending' | 'assigned' | 'completed' | 'cancelled' | 'under_review';
   createdAt: string;
+  appliedTeachers?: string[];
+  assignedTeacherId?: string;
+  assignedTeacherName?: string;
 }
 
 export interface Teacher {
@@ -54,8 +56,6 @@ export interface Teacher {
 }
 
 export interface Application {
-  teacherName: ReactNode;
-  proposedDateTime: any;
   id: string;
   requestId: string;
   teacherId: string;
@@ -63,6 +63,8 @@ export interface Application {
   message: string;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
+  proposedDateTime: any;
+  teacherName: string;
 }
 
 export interface Course {
@@ -78,7 +80,7 @@ export interface Course {
   status: string;
   proposedDateTime: any;
   createdAt: any;
-  meetingLink?: string; // Added meetingLink property
+  meetingLink?: string;
 }
 
 export interface ScheduledCourse {
