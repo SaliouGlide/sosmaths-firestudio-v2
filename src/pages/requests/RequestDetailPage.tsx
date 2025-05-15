@@ -198,17 +198,21 @@ const RequestDetailPage = () => {
     setIsSubmitting(true);
     try {
       if (application.proposedDateTime) {
+        // Generate unique meeting link based on request ID
+        const meetingLink = `https://meet.jit.si/${id}`;
+
         const courseData = {
           teacherId: application.teacherId,
           requestId: id,
-          studentId: request.parentId, // Use request.parentId
+          studentId: request.parentId,
           teacherName: application.teacherName,
           message: application.message,
-          subject : request.subjects,
-          level : request.level,
+          subject: request.subjects,
+          level: request.level,
           status: 'pending',
           proposedDateTime: application.proposedDateTime,
           createdAt: Timestamp.now(),
+          meetingLink: meetingLink // Add meeting link to course data
         };
         await addDoc(collection(db, 'courses'), courseData);
         console.log('New course document created successfully.');

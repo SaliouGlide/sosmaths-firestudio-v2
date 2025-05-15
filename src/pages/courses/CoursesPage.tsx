@@ -266,8 +266,11 @@ function CoursesPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2 mt-4">
-                      {course.status === "scheduled" && (
-                        <Button className="flex-1 flex items-center justify-center">
+                      {course.status === "scheduled" && course.meetingLink && (
+                        <Button 
+                          className="flex-1 flex items-center justify-center"
+                          onClick={() => window.open(course.meetingLink, '_blank')}
+                        >
                           <Video className="h-4 w-4 mr-2" />
                           Rejoindre
                         </Button>
