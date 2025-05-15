@@ -12,7 +12,8 @@ import {
   setDoc,
   orderBy,
   getDoc,
-  serverTimestamp // Added serverTimestamp import
+  serverTimestamp,
+  arrayUnion // Added arrayUnion import
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -39,7 +40,7 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-export { Timestamp, doc, getDoc, setDoc, updateDoc, getDocs, collection, addDoc, query, where, orderBy, serverTimestamp }; // Export serverTimestamp
+export { Timestamp, doc, getDoc, setDoc, updateDoc, getDocs, collection, addDoc, query, where, orderBy, serverTimestamp, arrayUnion }; // Added arrayUnion to exports
 
 export { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink };
 
@@ -286,4 +287,3 @@ export const getTeacherRequests = async (): Promise<CourseRequest[]> => {
     throw error;
   }
 };
-
