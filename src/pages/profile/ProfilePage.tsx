@@ -119,7 +119,7 @@ function ProfilePage({ onLogout }: ProfilePageProps) {
                     <div className="rounded-full bg-primary-100 p-2 mr-4">
                       <BookOpenCheck className="h-5 w-5 text-primary-500" /> {/* Icon color adjusted */}
                     </div>
-                    <span className="text-secondary-dark-blue">Mes cours</span>
+                    <span className="text-secondary-dark-blue">Revenus</span>
                   </Link>
                 </li>
                 <li>
