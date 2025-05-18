@@ -279,15 +279,6 @@ function CoursesPage() {
                           Rejoindre
                         </Button>
                       )}
-                      {course.status === "scheduled" && course.meetingLink && (
-                        <Button 
-                          className="flex-1 flex items-center justify-center"
-                          onClick={() => handleJoinMeeting(course.meetingLink)}
-                        >
-                          <Video className="h-4 w-4 mr-2" />
-                          Rejoindre
-                        </Button>
-                      )}
                       <Link to={`/courses/${course.id}`} className="flex-1">
                         <Button
                           variant="outline"
