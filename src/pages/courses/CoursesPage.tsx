@@ -26,7 +26,11 @@ function CoursesPage() {
         setIsLoading(true);
         setError(null);
         const coursesRef = collection(db, "courses");
-        const q = query(coursesRef, where("studentId", "==", auth.currentUser.uid));
+        const q = query(
+          coursesRef,
+          where("studentId", "==", auth.currentUser.uid),
+          where("status", "==", "scheduled")
+        );
         const querySnapshot = await getDocs(q);
 
         const coursesData: Course[] = [];
