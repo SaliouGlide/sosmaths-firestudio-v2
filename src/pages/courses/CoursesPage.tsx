@@ -222,7 +222,7 @@ function CoursesPage() {
 console.log("Filtered courses:", filteredCourses);
 filteredCourses.forEach(course => {
   console.log(`Course ${course.id}: status=${course.status}, meetingLink=${course.meetingLink}`);
-})
+});
               {filteredCourses.map((course) => (
                 <Card key={course.id} className="hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-6">
