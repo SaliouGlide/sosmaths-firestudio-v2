@@ -138,7 +138,7 @@ function TeacherDashboardPage() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-secondary-dark-blue">Prochains cours</h2>
-              <Link to="/courses">
+              <Link to="/planning">
                 <Button variant="link">Voir tout</Button>
               </Link>
             </div>
