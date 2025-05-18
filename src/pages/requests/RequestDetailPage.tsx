@@ -139,7 +139,7 @@ const RequestDetailPage = () => {
         message: application.message,
         subject: request.subjects,
         level: request.level,
-        status: 'pending',
+        status: 'scheduled',
         proposedDateTime: Timestamp.fromDate(startTime),
         endDateTime: Timestamp.fromDate(endTime),
         createdAt: Timestamp.now(),
