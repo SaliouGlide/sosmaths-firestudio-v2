@@ -76,6 +76,12 @@ function CoursesPage() {
     return matchesSearch && matchesSubject && (activeTab === "upcoming" ? isUpcoming : !isUpcoming);
   });
 
+  // Debug logging
+  console.log("Filtered courses:", filteredCourses);
+  filteredCourses.forEach(course => {
+    console.log(`Course ${course.id}: status=${course.status}, meetingLink=${course.meetingLink}`);
+  });
+
   const handleJoinMeeting = (meetingLink: string) => {
     window.open(meetingLink, '_blank');
   };
