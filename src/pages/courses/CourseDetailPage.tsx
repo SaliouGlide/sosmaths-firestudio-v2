@@ -134,18 +134,24 @@ function CourseDetailPage() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium mb-3">Actions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {course.meetingLink && (
+                      <Button 
+                        fullWidth 
+                        className="justify-center"
+                        onClick={() => window.open(course.meetingLink, '_blank')}
+                      >
+                        <Video className="h-5 w-5 mr-2" />
+                        Rejoindre le cours
+                      </Button>
+                    )}
                     <Button 
+                      variant="secondary" 
                       fullWidth 
                       className="justify-center"
-                      onClick={() => window.open(course.meetingLink, '_blank')}
                     >
-                      <Video className="h-5 w-5 mr-2" />
-                      Rejoindre le cours
-                    </Button>
-                    <Button variant="secondary" fullWidth className="justify-center">
-                      <MessageSquare className="h-5 w-5 mr-2" />
-                      Contacter le professeur
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Contacter le professeur
                     </Button>
                   </div>
                 </div>
