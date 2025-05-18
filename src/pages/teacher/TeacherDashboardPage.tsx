@@ -93,67 +93,45 @@ function TeacherDashboardPage() {
       <Header />
       <main className="container mx-auto px-4 pt-20 pb-24">
         <div className="max-w-4xl mx-auto">
-          {/* Welcome Section */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
-                <Users className="h-8 w-8 text-primary-600" />
+          {/* Welcome and Stats Section */}
+          <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow-lg p-8 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="flex items-center space-x-4">
+                <div className="h-20 w-20 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                  <Users className="h-10 w-10 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">
+                    Bonjour, {auth.currentUser?.displayName || 'Professeur'}
+                  </h1>
+                  <div className="flex items-center mt-1">
+                    <Star className="h-5 w-5 text-amber-300 fill-current" />
+                    <span className="ml-1 text-white/90">
+                      4.5 (24 avis)
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-secondary-dark-blue">
-                  Bonjour, {auth.currentUser?.displayName || 'Professeur'}
-                </h1>
-                <div className="flex items-center mt-1">
-                  <Star className="h-4 w-4 text-amber-400 fill-current" />
-                  <span className="ml-1 text-sm text-secondary-dark-blue">
-                    4.5 (24 avis)
-                  </span>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-auto">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <p className="text-white/80 text-sm">Ce mois</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">36h</h3>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <p className="text-white/80 text-sm">Élèves</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">12</h3>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <p className="text-white/80 text-sm">Cours donnés</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">24</h3>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                  <p className="text-white/80 text-sm">Revenu</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">960€</h3>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Stats Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="shadow-md">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-secondary-dark-blue">Cours donnés</p>
-                    <h3 className="text-2xl font-bold text-secondary-dark-blue mt-1">24</h3>
-                  </div>
-                  <div className="h-12 w-12 bg-primary-100 rounded-full flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-primary-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="shadow-md">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-secondary-dark-blue">Élèves</p>
-                    <h3 className="text-2xl font-bold text-secondary-dark-blue mt-1">12</h3>
-                  </div>
-                  <div className="h-12 w-12 bg-primary-100 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="shadow-md">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-secondary-dark-blue">Heures ce mois</p>
-                    <h3 className="text-2xl font-bold text-secondary-dark-blue mt-1">36h</h3>
-                  </div>
-                  <div className="h-12 w-12 bg-primary-100 rounded-full flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-primary-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Upcoming Courses Section */}
