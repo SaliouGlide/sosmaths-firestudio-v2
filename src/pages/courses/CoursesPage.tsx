@@ -218,11 +218,7 @@ function CoursesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              // Ajoutez ces lignes juste avant le rendu de votre grille de cours
-console.log("Filtered courses:", filteredCourses);
-filteredCourses.forEach(course => {
-  console.log(`Course ${course.id}: status=${course.status}, meetingLink=${course.meetingLink}`);
-});
+              
               {filteredCourses.map((course) => (
                 <Card key={course.id} className="hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-6">
