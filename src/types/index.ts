@@ -14,9 +14,24 @@ export interface CourseRequest {
   preferredDate: string;
   status: 'pending' | 'assigned' | 'completed' | 'cancelled';
   createdAt: string;
-  appliedTeachers?: string[]; // Add this field to track which teachers have applied
+  appliedTeachers?: string[];
   assignedTeacherId?: string;
   assignedTeacherName?: string;
 }
 
-// ... (keep rest of the types)
+export type UserRole = 'parent' | 'teacher' | 'coordinator' | 'admin';
+
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  phoneCountry?: string;
+  bio?: string;
+  subjects?: string[];
+  qualifications?: string[];
+  hourlyRate?: string;
+  userType: UserRole;
+  createdAt?: string;
+  updatedAt?: string;
+}

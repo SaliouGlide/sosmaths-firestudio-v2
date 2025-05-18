@@ -24,11 +24,17 @@ import TeacherPlanningPage from './pages/teacher/TeacherPlanningPage';
 import TeacherProfileEditPage from './pages/teacher/TeacherProfileEditPage';
 import TeacherStudentsPage from './pages/teacher/TeacherStudentsPage';
 
+// Coordinator pages
+import CoordinatorDashboardPage from './pages/coordinator/CoordinatorDashboardPage';
+
+// Admin pages
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+
 import { Toaster } from 'sonner';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userType, setUserType] = useState<'parent' | 'teacher'>('parent');
+  const [userType, setUserType] = useState<'parent' | 'teacher' | 'coordinator' | 'admin'>('parent');
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
@@ -112,7 +118,15 @@ function App() {
             path="/" 
             element={
               isAuthenticated ? (
-                userType === 'teacher' ? (
+                userType === 'admin' ? (
+                  <Layout>
+                    <AdminDashboardPage />
+                  </Layout>
+                ) : userType === 'coordinator' ? (
+                  <Layout>
+                    <CoordinatorDashboardPage />
+                  </Layout>
+                ) : userType === 'teacher' ? (
                   <Layout>
                     <TeacherDashboardPage />
                   </Layout>
