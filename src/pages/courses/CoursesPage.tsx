@@ -76,6 +76,10 @@ function CoursesPage() {
     return matchesSearch && matchesSubject && (activeTab === "upcoming" ? isUpcoming : !isUpcoming);
   });
 
+  const handleJoinMeeting = (meetingLink: string) => {
+    window.open(meetingLink, '_blank');
+  };
+
   const formatDateTime = (timestamp: any) => {
     if (!timestamp) return "Date non disponible";
     try {
@@ -126,10 +130,6 @@ function CoursesPage() {
       default:
         return status;
     }
-  };
-
-  const handleJoinMeeting = (meetingLink: string) => {
-    window.open(meetingLink, '_blank');
   };
 
   if (isLoading) {
@@ -272,7 +272,7 @@ function CoursesPage() {
                     <div className="flex gap-2 mt-4">
                       {course.status === "scheduled" && course.meetingLink && (
                         <Button 
-                          className="flex-1 flex items-center justify-center"
+                          className="flex items-center justify-center"
                           onClick={() => handleJoinMeeting(course.meetingLink)}
                         >
                           <Video className="h-4 w-4 mr-2" />
