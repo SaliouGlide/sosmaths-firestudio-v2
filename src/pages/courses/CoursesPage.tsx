@@ -272,12 +272,13 @@ function CoursesPage() {
                     <div className="flex gap-2 mt-4">
                       {course.status === "scheduled" && course.meetingLink && (
                         <Button 
-                          className="flex items-center justify-center"
-                          onClick={() => handleJoinMeeting(course.meetingLink)}
-                        >
-                          <Video className="h-4 w-4 mr-2" />
-                          Rejoindre
-                        </Button>
+                        fullWidth 
+                        className="justify-center"
+                        onClick={() => window.open(course.meetingLink, '_blank')}
+                      >
+                        <Video className="h-5 w-5 mr-2" />
+                        Rejoindre le cours
+                      </Button>
                       )}
                       <Link to={`/courses/${course.id}`} className="flex-1">
                         <Button
