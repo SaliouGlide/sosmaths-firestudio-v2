@@ -226,8 +226,7 @@ function TeacherDashboardPage() {
                       <p className="text-sm text-secondary-dark-blue mb-3">{request.description}</p>
                       <div className="flex items-center text-sm text-secondary-dark-blue">
                         <Calendar className="h-4 w-4 mr-1" />
-                        <span>{request.hoursPerWeek}h/semaine</span>  -  
-                        {/* Display type as a string */} {request.teachingLanguage === 'french' ? 'dutch'}
+                        <span>{request.hoursPerWeek}h/semaine</span> 
                       </div>
                     </CardContent>
                   </Card>
