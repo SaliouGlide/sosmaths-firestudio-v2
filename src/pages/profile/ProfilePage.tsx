@@ -117,7 +117,7 @@ function ProfilePage({ onLogout }: ProfilePageProps) {
                 <li>
                   <Link to="/courses" className="flex items-center p-4 hover:bg-gray-50">
                     <div className="rounded-full bg-primary-100 p-2 mr-4">
-                      <BookOpenCheck className="h-5 w-5 text-primary-500" /> {/* Icon color adjusted */}
+                      <DolarSign className="h-5 w-5 text-primary-500" /> {/* Icon color adjusted */}
                     </div>
                     <span className="text-secondary-dark-blue">Revenus</span>
                   </Link>
