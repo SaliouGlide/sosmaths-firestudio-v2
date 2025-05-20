@@ -5,19 +5,24 @@ import { Footer } from '../../components/layout/Footer';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Clock, Calendar, User } from 'lucide-react';
+import * as Popover from '@radix-ui/react-popover';
+import { DayPicker } from 'react-day-picker';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { toast } from 'sonner';
 import { subjects } from '../../utils/mockData';
 import type { Session } from '../../types';
+import 'react-day-picker/dist/style.css';
 
 function CreateSessionPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [duration, setDuration] = useState(60);
   const [level, setLevel] = useState('');
 
@@ -30,12 +35,13 @@ function CreateSessionPage() {
   ];
 
   const durations = [
-    { value: 30, label: '30 minutes' },
-    { value: 45, label: '45 minutes' },
     { value: 60, label: '1 heure' },
     { value: 90, label: '1 heure 30' },
-    { value: 120, label: '2 heures' }
+    { value: 180, label: '3 heures' }
   ];
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = ['00', '30'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +51,12 @@ function CreateSessionPage() {
       return;
     }
 
-    if (!selectedStudent || !selectedDate || !selectedTime || selectedSubjects.length === 0) {
+    if (!selectedStudent || !selectedDate || selectedSubjects.length === 0) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    const dateTime = new Date(`${selectedDate}T${selectedTime}`);
-    if (dateTime < new Date()) {
+    if (selectedDate < new Date()) {
       toast.error('La date et l\'heure doivent être dans le futur');
       return;
     }
@@ -76,7 +81,7 @@ function CreateSessionPage() {
         subject: selectedSubjectsData,
         level,
         duration,
-        proposedDateTime: dateTime,
+        proposedDateTime: selectedDate,
         status: 'scheduled',
         meetingLink: `https://meet.jit.si/${auth.currentUser.uid}-${selectedStudent}-${Date.now()}`,
       };
@@ -189,33 +194,89 @@ function CreateSessionPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Date <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        required
-                      />
-                    </div>
+                    <Popover.Root>
+                      <Popover.Trigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal',
+                            !selectedDate && 'text-gray-500'
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {selectedDate ? (
+                            format(selectedDate, 'PPP', { locale: fr })
+                          ) : (
+                            <span>Sélectionner une date</span>
+                          )}
+                        </Button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content className="z-50 w-auto p-0 bg-white rounded-md shadow-lg">
+                          <DayPicker
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={setSelectedDate}
+                            locale={fr}
+                            disabled={{ before: new Date() }}
+                            className="p-3"
+                          />
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Heure <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                      <input
-                        type="time"
-                        value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        required
-                      />
-                    </div>
+                    <Popover.Root open={isTimePickerOpen} onOpenChange={setIsTimePickerOpen}>
+                      <Popover.Trigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal',
+                            !selectedDate && 'text-gray-500'
+                          )}
+                        >
+                          <Clock className="mr-2 h-4 w-4" />
+                          {selectedDate ? (
+                            format(selectedDate, 'HH:mm')
+                          ) : (
+                            <span>Sélectionner une heure</span>
+                          )}
+                        </Button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content className="z-50 w-64 p-3 bg-white rounded-md shadow-lg">
+                          <div className="grid grid-cols-4 gap-2 max-h-[300px] overflow-y-auto">
+                            {hours.map(hour =>
+                              minutes.map(minute => {
+                                const timeString = `${hour.toString().padStart(2, '0')}:${minute}`;
+                                const currentDate = selectedDate || new Date();
+                                const dateWithTime = new Date(currentDate);
+                                dateWithTime.setHours(hour);
+                                dateWithTime.setMinutes(parseInt(minute));
+
+                                return (
+                                  <Button
+                                    key={timeString}
+                                    variant="outline"
+                                    className="h-9"
+                                    onClick={() => {
+                                      setSelectedDate(dateWithTime);
+                                      setIsTimePickerOpen(false);
+                                    }}
+                                  >
+                                    {timeString}
+                                  </Button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
                   </div>
                 </div>
 
@@ -224,7 +285,7 @@ function CreateSessionPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Durée <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     {durations.map((d) => (
                       <button
                         key={d.value}
