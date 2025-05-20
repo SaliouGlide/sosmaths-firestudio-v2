@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/Button'; 
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { Calendar, Clock, Video, MessageSquare, Plus, Filter, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -13,6 +14,7 @@ import { fr } from 'date-fns/locale';
 function TeacherPlanningPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [view, setView] = useState<'day' | 'week'>('week');
@@ -100,7 +102,10 @@ function TeacherPlanningPage() {
                 <Filter className="h-4 w-4 mr-2" />
                 Filtrer
               </Button>
-              <Button size="sm">
+              <Button 
+                size="sm"
+                onClick={() => navigate('/sessions/create')}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nouvelle session
               </Button>
