@@ -189,21 +189,11 @@ function TeacherStudentsPage() {
                             Voir les cours
                           </Button>
                           <Button variant="outline" className="flex items-center">
-                      {student.avatar ? (
-                        <img
-                          src={student.avatar}
-                          alt={student.name}
-                          className="w-24 h-24 rounded-lg object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = 'https://images.pexels.com/photos/3771089/pexels-photo-3771089.jpeg';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-24 h-24 bg-primary-100 rounded-lg flex items-center justify-center">
-                          <User className="h-12 w-12 text-primary-600" />
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Contacter
+                          </Button>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
