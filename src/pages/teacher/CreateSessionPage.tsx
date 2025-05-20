@@ -13,6 +13,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { toast } from 'sonner';
 import { subjects } from '../../utils/mockData';
+import { cn } from '../../utils/cn';
 import type { Session } from '../../types';
 import 'react-day-picker/dist/style.css';
 
