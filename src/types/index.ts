@@ -36,11 +36,30 @@ export interface User {
   updatedAt?: string;
 }
 
+export interface StudentCourse {
+  id: string;
+  subject: Subject[];
+  level: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  proposedDateTime: any;
+  duration: number;
+  meetingLink?: string;
+  rating?: number;
+  comment?: string;
+  createdAt: string;
+}
+
+
 export interface StudentProfile {
   id: string;
   name: string;
   level: string;
   subjects: Subject[];
+  progress?: {
+    totalCourses: number;
+    completedCourses: number;
+    averageRating?: number;
+  };
   parentId: string;
   parentName: string;
   parentEmail: string;
