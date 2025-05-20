@@ -35,3 +35,16 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface StudentProfile {
+  id: string;
+  name: string;
+  level: string;
+  subjects: Subject[];
+  parentId: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  avatar?: string;
+  createdAt: string;
+}
