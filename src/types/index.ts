@@ -36,6 +36,19 @@ export interface User {
   updatedAt?: string;
 }
 
+export interface Session {
+  id: string;
+  teacherId: string;
+  studentId: string;
+  subject: Subject[];
+  level: string;
+  duration: number;
+  proposedDateTime: any;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  meetingLink?: string;
+  createdAt: string;
+}
+
 export interface StudentProfile {
   id: string;
   name: string;

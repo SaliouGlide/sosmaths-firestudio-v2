@@ -23,6 +23,7 @@ import TeacherCoursesPage from './pages/teacher/TeacherCoursesPage';
 import TeacherPlanningPage from './pages/teacher/TeacherPlanningPage';
 import TeacherProfileEditPage from './pages/teacher/TeacherProfileEditPage';
 import TeacherStudentsPage from './pages/teacher/TeacherStudentsPage';
+import CreateSessionPage from './pages/teacher/CreateSessionPage';
 
 // Coordinator pages
 import CoordinatorDashboardPage from './pages/coordinator/CoordinatorDashboardPage';
@@ -243,6 +244,14 @@ function App() {
                 element={
                   <Layout>
                     <TeacherProfilePage />
+                  </Layout>
+                }
+              />
+              <Route 
+                path="/sessions/create" 
+                element={
+                  <Layout>
+                    <CreateSessionPage />
                   </Layout>
                 }
               />
