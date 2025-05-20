@@ -5,37 +5,58 @@ import { Footer } from '../../components/layout/Footer';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Clock, Calendar, User } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { toast } from 'sonner';
 import { subjects } from '../../utils/mockData';
-import type { Session } from '../../types';
+import type { Session, CourseRequest } from '../../types';
 
 function CreateSessionPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [duration, setDuration] = useState(60);
-  const [level, setLevel] = useState('');
-
-  const levels = [
-    'CP', 'CE1', 'CE2', 'CM1', 'CM2',
-    '6ème', '5ème', '4ème', '3ème',
-    'Seconde', 'Première', 'Terminale',
-    'Licence 1', 'Licence 2', 'Licence 3',
-    'Master 1', 'Master 2'
-  ];
+  const [requests, setRequests] = useState<CourseRequest[]>([]);
 
   const durations = [
-    { value: 30, label: '30 minutes' },
-    { value: 45, label: '45 minutes' },
     { value: 60, label: '1 heure' },
     { value: 90, label: '1 heure 30' },
-    { value: 120, label: '2 heures' }
+    { value: 120, label: '2 heures' },
+    { value: 150, label: '2 heures 30' },
+    { value: 180, label: '3 heures' }
   ];
+
+  useEffect(() => {
+    const fetchAssignedRequests = async () => {
+      if (!auth.currentUser) return;
+
+      try {
+        setIsSubmitting(true);
+        const requestsRef = collection(db, 'requests');
+        const q = query(
+          requestsRef,
+          where('assignedTeacherId', '==', auth.currentUser.uid),
+          where('status', '==', 'assigned')
+        );
+        const querySnapshot = await getDocs(q);
+        const requestsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as CourseRequest[];
+        setRequests(requestsData);
+      } catch (error) {
+        console.error('Error fetching requests:', error);
+        toast.error('Erreur lors du chargement des demandes');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    fetchAssignedRequests();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +66,7 @@ function CreateSessionPage() {
       return;
     }
 
-    if (!selectedStudent || !selectedDate || !selectedTime || selectedSubjects.length === 0) {
+    if (!selectedRequest || !selectedDate || !selectedTime) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -60,25 +81,20 @@ function CreateSessionPage() {
     const toastId = toast.loading('Création de la session...');
 
     try {
-      const selectedSubjectsData = selectedSubjects.map(subjectId => {
-        const subject = subjects.find(s => s.id === subjectId);
-        if (!subject) throw new Error('Subject not found');
-        return {
-          id: subject.id,
-          name: subject.name,
-          isScientific: subject.isScientific
-        };
-      });
+      const selectedRequestData = requests.find(r => r.id === selectedRequest);
+      if (!selectedRequestData) {
+        throw new Error('Demande non trouvée');
+      }
 
       const sessionData: Partial<Session> = {
         teacherId: auth.currentUser.uid,
-        studentId: selectedStudent,
-        subject: selectedSubjectsData,
-        level,
+        studentId: selectedRequestData.parentId,
+        subject: selectedRequestData.subjects,
+        level: selectedRequestData.level,
         duration,
         proposedDateTime: dateTime,
         status: 'scheduled',
-        meetingLink: `https://meet.jit.si/${auth.currentUser.uid}-${selectedStudent}-${Date.now()}`,
+        meetingLink: `https://meet.jit.si/${auth.currentUser.uid}-${selectedRequestData.parentId}-${Date.now()}`,
       };
 
       await addDoc(collection(db, 'sessions'), {
@@ -114,71 +130,22 @@ function CreateSessionPage() {
                   Détails de la session
                 </h2>
 
-                {/* Student Selection */}
+                {/* Request Selection */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Élève <span className="text-red-500">*</span>
+                    Demande de cours <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={selectedStudent}
-                    onChange={(e) => setSelectedStudent(e.target.value)}
+                    value={selectedRequest}
+                    onChange={(e) => setSelectedRequest(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     required
                   >
-                    <option value="">Sélectionner un élève</option>
-                    {/* Add your students list here */}
-                  </select>
-                </div>
-
-                {/* Subject Selection */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Matières <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {subjects.map((subject) => (
-                      <button
-                        key={subject.id}
-                        type="button"
-                        onClick={() => {
-                          if (selectedSubjects.includes(subject.id)) {
-                            setSelectedSubjects(prev => prev.filter(id => id !== subject.id));
-                          } else {
-                            setSelectedSubjects(prev => [...prev, subject.id]);
-                          }
-                        }}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                          selectedSubjects.includes(subject.id)
-                            ? 'border-primary-500 bg-primary-50 text-primary-700'
-                            : 'border-gray-200 hover:border-primary-200'
-                        }`}
-                      >
-                        <div className="flex flex-col items-center text-center">
-                          {React.createElement(subject.icon, {
-                            size: 24,
-                            className: selectedSubjects.includes(subject.id) ? 'text-primary-500' : 'text-gray-400'
-                          })}
-                          <span className="mt-2 text-sm">{subject.name}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Level Selection */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Niveau <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    required
-                  >
-                    <option value="">Sélectionner un niveau</option>
-                    {levels.map((l) => (
-                      <option key={l} value={l}>{l}</option>
+                    <option value="">Sélectionner une demande</option>
+                    {requests.map((request) => (
+                      <option key={request.id} value={request.id}>
+                        {request.subjects?.map(s => s.name).join(', ')} - {request.parentName}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -224,7 +191,7 @@ function CreateSessionPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Durée <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {durations.map((d) => (
                       <button
                         key={d.value}
