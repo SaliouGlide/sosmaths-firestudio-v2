@@ -184,10 +184,12 @@ function TeacherStudentsPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-3 pt-4">
-                          <Button variant="outline" className="flex items-center">
+                          <Link to={`/students/${student.id}`}>
+                            <Button variant="outline" className="flex items-center">
                             <BookOpen className="h-4 w-4 mr-2" />
                             Voir les cours
-                          </Button>
+                            </Button>
+                          </Link>
                           <Button variant="outline" className="flex items-center">
                             <MessageSquare className="h-4 w-4 mr-2" />
                             Contacter

@@ -25,13 +25,13 @@ export function Footer() {
           </Link>
           {userType === 'teacher' ? (
             <Link 
-              to="/teacher/students" // Corrected path for teacher students
+              to="/students"
               className={cn(
                 "flex flex-col items-center p-2 text-secondary-dark-blue",
-                isActive('/teacher/students') && "text-primary-500"
+                isActive('/students') && "text-primary-500"
               )}
             >
-              <Users size={20} className={cn(isActive('/teacher/students') && "text-primary-500")} />
+              <Users size={20} className={cn(isActive('/students') && "text-primary-500")} />
               <span className="text-xs mt-1">Mes élèves</span>
             </Link>
           ) : (

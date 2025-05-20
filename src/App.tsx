@@ -238,6 +238,14 @@ function App() {
                   </Layout>
                 }
               />
+              <Route 
+                path="/students/:id" 
+                element={
+                  <Layout>
+                    <TeacherProfilePage />
+                  </Layout>
+                }
+              />
             </>
           )}
 
