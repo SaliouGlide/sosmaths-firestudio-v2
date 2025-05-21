@@ -86,21 +86,23 @@ function CreateSessionPage() {
         throw new Error('Demande non trouvée');
       }
 
-      const sessionData: Partial<Session> = {
+      // Create course data instead of session
+      const courseData = {
         teacherId: auth.currentUser.uid,
         studentId: selectedRequestData.parentId,
         subject: selectedRequestData.subjects,
         level: selectedRequestData.level,
-        duration,
+        requestId: selectedRequestData.id,
+        teacherName: selectedRequestData.assignedTeacherName,
+        message: selectedRequestData.description,
         proposedDateTime: dateTime,
+        endDateTime: new Date(dateTime.getTime() + duration * 60000), // Convert duration to milliseconds
         status: 'scheduled',
         meetingLink: `https://meet.jit.si/${auth.currentUser.uid}-${selectedRequestData.parentId}-${Date.now()}`,
+        createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, 'sessions'), {
-        ...sessionData,
-        createdAt: serverTimestamp(),
-      });
+      await addDoc(collection(db, 'courses'), courseData);
 
       toast.success('Session créée avec succès', {
         id: toastId,
