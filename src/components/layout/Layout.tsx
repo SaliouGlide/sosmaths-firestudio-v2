@@ -64,9 +64,9 @@ export function Layout({ children }: LayoutProps) {
 
   const sidebarItems = [
     { icon: <LayoutDashboard className="h-5 w-5" />, label: 'Tableau de bord', path: '/', roles: ['parent', 'teacher'] },
-    { icon: <BookOpen className="h-5 w-5" />, label: 'Mes cours', path: '/courses', roles: ['parent', 'teacher'] },
+    { icon: <BookOpen className="h-5 w-5" />, label: 'Mes cours', path: '/courses', roles: ['parent'] },
     { icon: <Users className="h-5 w-5" />, label: 'Mes élèves', path: '/students', roles: ['teacher'] },
-    { icon: <Calendar className="h-5 w-5" />, label: 'Planning', path: '/planning', roles: ['parent', 'teacher'] },
+    { icon: <Calendar className="h-5 w-5" />, label: 'Planning', path: '/planning', roles: ['teacher'] },
     { icon: <Mail className="h-5 w-5" />, label: 'Messagerie', path: '/messages', roles: ['parent', 'teacher'] },
     { icon: <CreditCard className="h-5 w-5" />, label: 'Paiements', path: '/payments', roles: ['parent'] },
     { icon: <CreditCard className="h-5 w-5" />, label: 'Revenus', path: '/earnings', roles: ['teacher'] },

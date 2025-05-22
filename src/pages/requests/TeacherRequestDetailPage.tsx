@@ -5,7 +5,7 @@ import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Calendar, Clock, User, Users, MessageSquare, Globe2, Phone, BookOpen } from 'lucide-react';
-import { db, doc, getDoc, collection, addDoc, serverTimestamp, auth, updateDoc, getDocs, query, where, getUserProfile, arrayUnion } from '../../firebase';
+import { db, doc, getDoc, collection, addDoc, serverTimestamp, auth, updateDoc, getDocs, query, where, getUserProfile } from '../../firebase';
 import type { CourseRequest } from '../../types';
 import { toast } from 'sonner';
 
@@ -141,13 +141,18 @@ function TeacherRequestDetailPage() {
   };
 
   const handleDateSelect = (dateString: string) => {
-     const date = new Date(dateString);
+     const date = new Date(dateString); // Convert string to Date object
+     // When a new date is selected, reset the time selection and set the new date (time is midnight)
+     // preserve the existing time if possible when changing date, otherwise set to beginning of time slot?
+     // For now, let's just set the date and clear the time.
      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
      setSelectedDateTime(dateOnly);
   };
 
    const handleTimeSelect = (time: Date) => {
-     if (!selectedDateTime) return;
+     // When a time is selected, update the selectedDateTime with the full date and time
+     // Need to combine the selected date (from selectedDateTime) with the selected time
+     if (!selectedDateTime) return; // Should not happen if UI is correct
 
      const finalDateTime = new Date(selectedDateTime);
      finalDateTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
@@ -157,6 +162,7 @@ function TeacherRequestDetailPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validation des champs obligatoires
     if (!auth.currentUser) {
       toast.error('Vous devez être connecté pour postuler');
       return;
@@ -172,11 +178,13 @@ function TeacherRequestDetailPage() {
       return;
     }
 
+    // Vérification que la date sélectionnée est dans le futur
     if (selectedDateTime < new Date()) {
       toast.warning('Veuillez sélectionner une date future');
       return;
     }
 
+    // Vérification que la date fait partie des disponibilités proposées
     if (request?.availableDates && request.availableDates.length > 0) {
       const isDateAvailable = request.availableDates.some(availDate => {
         const availableDate = new Date(availDate);
@@ -197,6 +205,7 @@ function TeacherRequestDetailPage() {
     const toastId = toast.loading('Envoi de votre candidature...');
 
     try {
+      // Vérification supplémentaire pour TypeScript
       if (!request?.id) {
         throw new Error('Requête invalide');
       }
@@ -207,8 +216,8 @@ function TeacherRequestDetailPage() {
         throw new Error('Profil du professeur introuvable');
       }
 
-      // Create application
-      await addDoc(
+      // Enregistrement dans Firestore
+      const applicationRef = await addDoc(
         collection(db, 'requests', request.id, 'applications'),
         {
           teacherId: auth.currentUser.uid,
@@ -223,29 +232,44 @@ function TeacherRequestDetailPage() {
         }
       );
 
-      // Update request status and add teacher to appliedTeachers array
+      // Mettre à jour le statut de la demande si nécessaire
       await updateDoc(doc(db, 'requests', request.id), {
         status: 'under_review',
-        appliedTeachers: arrayUnion(auth.currentUser.uid),
         updatedAt: serverTimestamp(),
       });
 
+      // Succès
       toast.success('Candidature envoyée avec succès !', {
         id: toastId,
+        action: {
+          label: 'Voir',
+          onClick: () => navigate(`/teacher/applications/${applicationRef.id}`),
+        },
       });
 
-      // Navigate to home page
-      navigate('/');
+      // Réinitialisation du formulaire
+      setMessage('');
+      setSelectedDateTime(null);
+
+      // Redirection après un délai
+      setTimeout(() => {
+        navigate('/teacher/requests');
+      }, 1500);
 
     } catch (error) {
       console.error("Erreur d'envoi:", error);
+
       let errorMessage = "Une erreur est survenue";
       if (error instanceof Error) {
         errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
       }
+
       toast.error(`Échec de l'envoi: ${errorMessage}`, {
         id: toastId,
       });
+
     } finally {
       setIsSubmitting(false);
     }
@@ -275,6 +299,8 @@ function TeacherRequestDetailPage() {
     );
   }
 
+  const selectedDateOnlyFormatted = selectedDateTime ? formatDate(selectedDateTime) : null;
+
   return (
     <div className="min-h-screen bg-white">
       <Header title="Détails de la demande" showBackButton />
@@ -284,6 +310,7 @@ function TeacherRequestDetailPage() {
           {/* Request Details Card */}
           <Card className="mb-6 shadow-md">
             <CardContent className="p-6 space-y-6">
+
               {/* Top Section: Subjects, Level, Created At, Status */}
               <div className="flex justify-between items-start">
                 <div>
@@ -305,12 +332,8 @@ function TeacherRequestDetailPage() {
                     </span>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  hasApplied 
-                    ? 'bg-gray-100 text-gray-700'
-                    : 'bg-warning-100 text-warning-800'
-                }`}>
-                  {hasApplied ? 'Déjà postulé' : 'Nouvelle demande'}
+                <span className="px-2 py-1 bg-warning-100 text-warning-800 rounded-full text-xs font-medium">
+                   Nouvelle demande
                 </span>
               </div>
 
@@ -385,6 +408,7 @@ function TeacherRequestDetailPage() {
                   </div>
                 </div>
               )}
+
             </CardContent>
           </Card>
 
@@ -396,14 +420,17 @@ function TeacherRequestDetailPage() {
               {hasApplied ? (
                 <div className='text-center text-secondary-dark-blue'>Vous avez déjà postulé à cette demande</div>
               ) : (
+                
+              
                 <form onSubmit={handleSubmit}>
-                  {/* Availabilities Section */}
+                  {/* Availabilities Section - Now Selectable in Application Card */}
                   <div className="mb-4">
                     <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Sélectionnez une date parmi les disponibilités proposées :</h2>
                     <div className="space-y-2">
                       {(request?.availableDates || []).length > 0 ? (
                         (request?.availableDates || []).map((dateString: string, index: number) => {
-                          const date = new Date(dateString);
+                          const date = new Date(dateString); // Convert string to Date object
+                          // Compare only the date part for highlighting
                           const isSelectedDate = selectedDateTime ?
                             new Date(selectedDateTime.getFullYear(), selectedDateTime.getMonth(), selectedDateTime.getDate()).getTime() ===
                             new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() : false;
@@ -412,12 +439,13 @@ function TeacherRequestDetailPage() {
                             key={index}
                             className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                               isSelectedDate
-                                ? 'border-primary-500 bg-primary-100'
+                                ? 'border-primary-500 bg-primary-100' // Highlight selected date
                                 : dateString === request?.preferredDate
-                                ? 'border-primary-200 bg-primary-50 hover:border-primary-300'
+                                ? 'border-primary-200 bg-primary-50 hover:border-primary-300' // Highlight preferred date
                                   : 'border-gray-200 bg-white hover:border-gray-300'
                             }`}
                             onClick={() => handleDateSelect(dateString)}
+                           
                             >
                               <div className="flex items-center text-secondary-dark-blue text-sm">
                                 <Calendar className="h-4 w-4 mr-2 text-gray-500"/>
@@ -437,7 +465,7 @@ function TeacherRequestDetailPage() {
                     </div>
                   </div>
 
-                  {/* Time Selection Section */}
+                  {/* Time Selection Section - Moved to Application Card */}
                   {selectedDateTime && request?.timeSlot && request?.availableDates.length > 0 && (
                     <div className="mb-4">
                       <h2 className="text-sm font-medium text-secondary-dark-blue mb-2">Sélectionnez une heure ({formatTimeSlot(request.timeSlot)}) :</h2>
@@ -473,7 +501,7 @@ function TeacherRequestDetailPage() {
                       onChange={(e) => setMessage(e.target.value)}
                       className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Présentez-vous et expliquez comment vous pouvez aider l'élève..."
-                      required
+                      required // Make the textarea required
                     />
                   </div>
 
@@ -488,7 +516,7 @@ function TeacherRequestDetailPage() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || !selectedDateTime || !message.trim() || hasApplied}
+                      disabled={isSubmitting || !selectedDateTime || !message.trim() || hasApplied} // Disable if submitting, no date/time, empty message, or has applied
                       className="flex items-center"
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
@@ -496,7 +524,8 @@ function TeacherRequestDetailPage() {
                     </Button>
                   </div>
                 </form>
-              )}
+                  )}
+
             </CardContent>
           </Card>
         </div>

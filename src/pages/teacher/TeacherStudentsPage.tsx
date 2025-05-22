@@ -1,26 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { teachers } from '../../utils/mockData';
 import { Search, Mail, Phone, BookOpen, GraduationCap, MessageSquare, User } from 'lucide-react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
+import type { StudentProfile } from '../../types';
+import { toast } from 'sonner';
 
 function TeacherStudentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const currentTeacher = teachers[0]; // Mock current teacher
-  const students = currentTeacher.students || [];
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!auth.currentUser) return;
+
+      try {
+        setIsLoading(true);
+        const coursesRef = collection(db, 'courses');
+        const q = query(
+          coursesRef,
+          where('teacherId', '==', auth.currentUser.uid),
+          where('status', 'in', ['scheduled', 'completed'])
+        );
+        const querySnapshot = await getDocs(q);
+
+        // Get unique student IDs
+        const studentIds = new Set(querySnapshot.docs.map(doc => doc.data().studentId));
+
+        // Fetch student profiles
+        const studentProfiles: StudentProfile[] = [];
+        for (const studentId of studentIds) {
+          const studentRef = collection(db, 'users');
+          const studentQuery = query(studentRef, where('id', '==', studentId));
+          const studentSnapshot = await getDocs(studentQuery);
+
+          if (!studentSnapshot.empty) {
+            const studentData = studentSnapshot.docs[0].data();
+            studentProfiles.push({
+              id: studentId,
+              name: studentData.name || 'Élève',
+              level: studentData.level || 'Niveau non spécifié',
+              subjects: studentData.subjects || [],
+              parentId: studentData.parentId,
+              parentName: studentData.parentName || 'Parent',
+              parentEmail: studentData.parentEmail || '',
+              parentPhone: studentData.parentPhone || '',
+              avatar: studentData.avatar,
+              createdAt: studentData.createdAt?.toDate?.() || new Date()
+            });
+          }
+        }
+
+        setStudents(studentProfiles);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        toast.error('Erreur lors du chargement des élèves');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
 
   const filteredStudents = students.filter(student => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
       student.name.toLowerCase().includes(query) ||
-      student.level.toLowerCase().includes(query) ||
-      student.parent.name.toLowerCase().includes(query)
+      student.level.toLowerCase().includes(query)
     );
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header title="Mes élèves" />
+        <main className="container mx-auto px-4 pt-20 pb-24">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,7 +143,7 @@ function TeacherStudentsPage() {
                             <div className="flex flex-wrap gap-2">
                               {student.subjects.map(subject => (
                                 <span
-                                  key={subject.id}
+                                  key={subject.name}
                                   className="px-2 py-1 rounded-full text-xs bg-primary-50 text-primary-700"
                                 >
                                   {subject.name}
@@ -90,24 +159,24 @@ function TeacherStudentsPage() {
                             <div className="space-y-2">
                               <div className="flex items-center">
                                 <User className="h-4 w-4 text-gray-400 mr-2" />
-                                <span>{student.parent.name}</span>
+                                <span>{student.parentName}</span>
                               </div>
                               <div className="flex items-center">
                                 <Mail className="h-4 w-4 text-gray-400 mr-2" />
                                 <a
-                                  href={`mailto:${student.parent.email}`}
+                                  href={`mailto:${student.parentEmail}`}
                                   className="text-primary-600 hover:underline"
                                 >
-                                  {student.parent.email}
+                                  {student.parentEmail}
                                 </a>
                               </div>
                               <div className="flex items-center">
                                 <Phone className="h-4 w-4 text-gray-400 mr-2" />
                                 <a
-                                  href={`tel:${student.parent.phone}`}
+                                  href={`tel:${student.parentPhone}`}
                                   className="text-primary-600 hover:underline"
                                 >
-                                  {student.parent.phone}
+                                  {student.parentPhone}
                                 </a>
                               </div>
                             </div>
@@ -115,13 +184,15 @@ function TeacherStudentsPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-3 pt-4">
-                          <Button variant="outline" className="flex items-center">
+                          <Link to={`/students/${student.id}`}>
+                            <Button variant="outline" className="flex items-center">
                             <BookOpen className="h-4 w-4 mr-2" />
                             Voir les cours
-                          </Button>
+                            </Button>
+                          </Link>
                           <Button variant="outline" className="flex items-center">
                             <MessageSquare className="h-4 w-4 mr-2" />
-                            Contacter le parent
+                            Contacter
                           </Button>
                         </div>
                       </div>

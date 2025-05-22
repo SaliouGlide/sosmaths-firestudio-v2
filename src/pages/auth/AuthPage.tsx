@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, AuthError } from 'firebase/auth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { sendLoginLink, isSignInWithEmailLink, completeLoginWithLink, auth } from '../../firebase';
@@ -43,6 +43,25 @@ function AuthPage({ onLogin }: AuthPageProps) {
     }
   }, [location, navigate, onLogin, userType]);
   
+  const getErrorMessage = (error: AuthError) => {
+    switch (error.code) {
+      case 'auth/invalid-credential':
+        return 'Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.';
+      case 'auth/user-not-found':
+        return 'Aucun compte trouvé avec cet email. Veuillez vous inscrire.';
+      case 'auth/wrong-password':
+        return 'Mot de passe incorrect. Veuillez réessayer.';
+      case 'auth/email-already-in-use':
+        return 'Un compte existe déjà avec cet email. Veuillez vous connecter.';
+      case 'auth/weak-password':
+        return 'Le mot de passe doit contenir au moins 6 caractères.';
+      case 'auth/invalid-email':
+        return 'Adresse email invalide. Veuillez vérifier votre saisie.';
+      default:
+        return 'Une erreur est survenue. Veuillez réessayer.';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return setError('Email is required.');
@@ -75,7 +94,7 @@ function AuthPage({ onLogin }: AuthPageProps) {
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
-      setError(error.message || 'An error occurred.');
+      setError(getErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

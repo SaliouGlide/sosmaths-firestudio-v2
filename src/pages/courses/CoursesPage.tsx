@@ -26,7 +26,11 @@ function CoursesPage() {
         setIsLoading(true);
         setError(null);
         const coursesRef = collection(db, "courses");
-        const q = query(coursesRef, where("studentId", "==", auth.currentUser.uid));
+        const q = query(
+          coursesRef,
+          where("studentId", "==", auth.currentUser.uid),
+          where("status", "==", "scheduled")
+        );
         const querySnapshot = await getDocs(q);
 
         const coursesData: Course[] = [];
@@ -75,6 +79,16 @@ function CoursesPage() {
     const isUpcoming = new Date(course.proposedDateTime.toDate()) > new Date();
     return matchesSearch && matchesSubject && (activeTab === "upcoming" ? isUpcoming : !isUpcoming);
   });
+
+  // Debug logging
+  console.log("Filtered courses:", filteredCourses);
+  filteredCourses.forEach(course => {
+    console.log(`Course ${course.id}: status=${course.status}, meetingLink=${course.meetingLink}`);
+  });
+
+  const handleJoinMeeting = (meetingLink: string) => {
+    window.open(meetingLink, '_blank');
+  };
 
   const formatDateTime = (timestamp: any) => {
     if (!timestamp) return "Date non disponible";
@@ -214,6 +228,7 @@ function CoursesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
               {filteredCourses.map((course) => (
                 <Card key={course.id} className="hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-6">
@@ -266,11 +281,15 @@ function CoursesPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2 mt-4">
-                      {course.status === "scheduled" && (
-                        <Button className="flex-1 flex items-center justify-center">
-                          <Video className="h-4 w-4 mr-2" />
-                          Rejoindre
-                        </Button>
+                      {course.status === "scheduled" && course.meetingLink && (
+                        <Button 
+                        fullWidth 
+                        className="justify-center"
+                        onClick={() => window.open(course.meetingLink, '_blank')}
+                      >
+                        <Video className="h-5 w-5 mr-2" />
+                        Rejoindre le cours
+                      </Button>
                       )}
                       <Link to={`/courses/${course.id}`} className="flex-1">
                         <Button

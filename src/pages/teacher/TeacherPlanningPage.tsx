@@ -1,45 +1,80 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Card, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import Calendar from 'react-calendar';
-import { scheduledCourses } from '../../utils/mockData';
-import { Clock, Video, MessageSquare, User, Star, Plus } from 'lucide-react';
-import 'react-calendar/dist/Calendar.css';
-
-type CalendarView = 'month' | 'week' | 'day';
+import { Button } from '../../components/ui/Button'; 
+import { Link, useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
+import { Calendar, Clock, Video, MessageSquare, Plus, Filter, ChevronRight, ChevronLeft } from 'lucide-react';
+import type { Course } from '../../types';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 function TeacherPlanningPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>('week');
-  
-  const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    return `${hours}h${minutes !== '00' ? minutes : ''}`;
-  };
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [view, setView] = useState<'day' | 'week'>('week');
 
-  const todayCourses = scheduledCourses.filter(course => {
-    const courseDate = new Date(course.date);
-    return (
-      courseDate.getDate() === selectedDate.getDate() &&
-      courseDate.getMonth() === selectedDate.getMonth() &&
-      courseDate.getFullYear() === selectedDate.getFullYear()
-    );
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!auth.currentUser) return;
+
+      try {
+        setIsLoading(true);
+        const coursesRef = collection(db, "courses");
+        const q = query(
+          coursesRef,
+          where("teacherId", "==", auth.currentUser.uid),
+          where("status", "==", "scheduled")
+        );
+        const querySnapshot = await getDocs(q);
+
+        const coursesData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Course[];
+
+        setCourses(coursesData);
+      } catch (err) {
+        console.error("Error fetching courses:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  const weekDays = eachDayOfInterval({
+    start: startOfWeek(selectedDate, { weekStartsOn: 1 }),
+    end: endOfWeek(selectedDate, { weekStartsOn: 1 })
   });
 
-  const handleViewChange = (newView: CalendarView) => {
-    setView(newView);
-  };
-
-  const handleNewSession = () => {
-    navigate('/requests/create');
-  };
+  const filteredCourses = courses.filter(course => {
+    const courseDate = course.proposedDateTime.toDate();
+    if (view === 'day') {
+      return isSameDay(courseDate, selectedDate);
+    } else {
+      return courseDate >= startOfWeek(selectedDate) && courseDate <= endOfWeek(selectedDate);
+    }
+  });
 
   const handleJoinMeeting = (meetingLink: string) => {
     window.open(meetingLink, '_blank');
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    if (view === 'day') {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    } else {
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+    }
+    setSelectedDate(newDate);
   };
 
   return (
@@ -47,154 +82,145 @@ function TeacherPlanningPage() {
       <Header title="Planning" />
       
       <main className="container mx-auto px-4 pt-20 pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Calendar Section */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={view === 'month' ? 'default' : 'outline'}
-                      onClick={() => handleViewChange('month')}
-                      size="sm"
-                    >
-                      Mois
-                    </Button>
-                    <Button
-                      variant={view === 'week' ? 'default' : 'outline'}
-                      onClick={() => handleViewChange('week')}
-                      size="sm"
-                    >
-                      Semaine
-                    </Button>
-                    <Button
-                      variant={view === 'day' ? 'default' : 'outline'}
-                      onClick={() => handleViewChange('day')}
-                      size="sm"
-                    >
-                      Jour
-                    </Button>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSelectedDate(new Date())}
-                    >
-                      Aujourd'hui
-                    </Button>
-                    <Button 
-                      size="sm"
-                      onClick={handleNewSession}
-                      className="whitespace-nowrap"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nouvelle session
-                    </Button>
-                  </div>
-                </div>
-
-                <Calendar
-                  onChange={setSelectedDate}
-                  value={selectedDate}
-                  view={view.toLowerCase() as 'month' | 'week' | 'day'}
-                  onViewChange={({ view }) => handleViewChange(view as CalendarView)}
-                  locale="fr-FR"
-                  className="w-full border-0"
-                />
-              </CardContent>
-            </Card>
+        <div className="max-w-5xl mx-auto">
+          {/* Header with Actions */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-secondary-dark-blue">Mon Planning</h1>
+              <p className="text-gray-600">
+                {view === 'day' 
+                  ? format(selectedDate, 'EEEE d MMMM yyyy', { locale: fr })
+                  : `Semaine du ${format(weekDays[0], 'd MMMM', { locale: fr })}`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowCalendar(!showCalendar)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtrer
+              </Button>
+              <Button 
+                size="sm"
+                onClick={() => navigate('/sessions/create')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle session
+              </Button>
+            </div>
           </div>
 
-          {/* Daily Schedule Section */}
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h2 className="text-lg font-semibold mb-4">
-                  {new Intl.DateTimeFormat('fr-FR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long'
-                  }).format(selectedDate)}
-                </h2>
+          {/* Calendar Filter */}
+          {showCalendar && (
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <Button
+                    variant={view === 'day' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setView('day')}
+                  >
+                    Jour
+                  </Button>
+                  <Button
+                    variant={view === 'week' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setView('week')}
+                  >
+                    Semaine
+                  </Button>
+                </div>
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigateDate('prev')}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium">
+                    {format(selectedDate, 'MMMM yyyy', { locale: fr })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigateDate('next')}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-                <div className="space-y-4">
-                  {todayCourses.length > 0 ? (
-                    todayCourses.map((course) => (
-                      <div
-                        key={course.id}
-                        className="p-4 rounded-lg border border-gray-200 hover:border-primary-200 transition-colors"
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="font-medium">
-                              {course.teacher.subjects[0]?.name}
-                            </h3>
-                            <div className="flex items-center mt-1">
-                              <User className="h-4 w-4 text-gray-400 mr-1" />
-                              <span className="text-sm text-gray-600">
-                                Jean Dupont
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-sm font-medium text-primary-600">
-                            {formatTime(course.startTime)}
+          {/* Courses List */}
+          <div className="space-y-4">
+            {filteredCourses.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Aucun cours prévu
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    Vous n'avez pas de cours programmé pour cette période
+                  </p>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter une session
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredCourses.map((course) => (
+                <Card key={course.id} className="hover:shadow-md transition-all">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded-full text-sm">
+                            {format(course.proposedDateTime.toDate(), 'HH:mm')}
+                          </span>
+                          <span className="text-gray-500">•</span>
+                          <span className="text-gray-600">
+                            {course.duration || 60} min
                           </span>
                         </div>
-
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          {course.meetingLink && (
-                            <Button 
-                              size="sm" 
-                              className="flex items-center"
-                              onClick={() => handleJoinMeeting(course.meetingLink!)}
-                            >
-                              <Video className="h-4 w-4 mr-1" />
-                              Rejoindre
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" className="flex items-center">
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Message
-                          </Button>
+                        
+                        <h3 className="text-lg font-medium text-secondary-dark-blue mb-1">
+                          {course.subject.map(s => s.name).join(', ')} - {course.level}
+                        </h3>
+                        
+                        <div className="flex items-center text-gray-600 text-sm">
+                          <Clock className="h-4 w-4 mr-2" />
+                          <span>
+                            {format(course.proposedDateTime.toDate(), 'EEEE d MMMM', { locale: fr })}
+                          </span>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500">Aucun cours prévu</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Stats Card */}
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h3 className="font-medium mb-4">Statistiques du mois</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Heures de cours</span>
-                    <span className="font-medium">24h</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Élèves</span>
-                    <span className="font-medium">8</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Note moyenne</span>
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 text-amber-400 fill-current mr-1" />
-                      <span className="font-medium">4.8</span>
+                      <div className="flex flex-wrap gap-2">
+                        {course.meetingLink && (
+                          <Button 
+                            onClick={() => handleJoinMeeting(course.meetingLink)}
+                            className="flex items-center"
+                          >
+                            <Video className="h-4 w-4 mr-2" />
+                            Rejoindre
+                          </Button>
+                        )}
+                        <Button variant="outline" className="flex items-center">
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Message
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       </main>

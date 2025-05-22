@@ -1,46 +1,80 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Footer } from '../../components/layout/Footer';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
-import { scheduledCourses } from '../../utils/mockData';
 import { Calendar, Clock, Video, MessageSquare, FileText, Star } from 'lucide-react';
+import { db, doc, getDoc } from '../../firebase';
+import type { Course } from '../../types';
 
 function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const course = scheduledCourses.find(c => c.id === id);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-  
-  if (!course) {
+    const fetchCourse = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const courseRef = doc(db, 'courses', id);
+        const courseSnap = await getDoc(courseRef);
+        
+        if (courseSnap.exists()) {
+          const courseData = courseSnap.data();
+          setCourse({
+            id: courseSnap.id,
+            ...courseData,
+            proposedDateTime: courseData.proposedDateTime?.toDate(),
+            createdAt: courseData.createdAt?.toDate()
+          });
+        } else {
+          setError('Course not found');
+        }
+      } catch (err) {
+        console.error('Error fetching course:', err);
+        setError('Failed to load course details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourse();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !course) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Cours non trouvé</h1>
+          <h1 className="text-2xl font-bold mb-4 text-secondary-dark-blue">
+            {error || 'Course not found'}
+          </h1>
           <Link to="/courses">
-            <Button>Retour à mes cours</Button>
+            <Button>Return to Courses</Button>
           </Link>
         </div>
       </div>
     );
   }
   
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     }).format(date);
-  };
-  
-  const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    return `${hours}h${minutes !== '00' ? minutes : ''}`;
   };
   
   return (
@@ -53,14 +87,12 @@ function CourseDetailPage() {
             <div className="bg-primary-600 p-6 text-white">
               <div className="flex justify-between items-start">
                 <div>
-                  <h1 className="text-xl font-semibold mb-1">Cours de {course.teacher.subjects[0]?.name || 'Matière'}</h1>
+                  <h1 className="text-xl font-semibold mb-1">
+                    {course.subject.map(s => s.name).join(', ')} - {course.level}
+                  </h1>
                   <div className="flex items-center text-primary-100">
                     <Calendar className="h-5 w-5 mr-2" />
-                    {formatDate(course.date)}
-                  </div>
-                  <div className="flex items-center text-primary-100 mt-1">
-                    <Clock className="h-5 w-5 mr-2" />
-                    {formatTime(course.startTime)} - {formatTime(course.endTime)}
+                    {formatDate(course.proposedDateTime)}
                   </div>
                 </div>
                 <div>
@@ -81,20 +113,17 @@ function CourseDetailPage() {
             <div className="p-6">
               <div className="flex items-center mb-6">
                 <img 
-                  src={course.teacher.avatar || 'https://via.placeholder.com/80'} 
-                  alt={course.teacher.name}
+                  src="https://images.pexels.com/photos/5212324/pexels-photo-5212324.jpeg"
+                  alt={course.teacherName}
                   className="h-16 w-16 rounded-full object-cover mr-4"
                 />
                 <div>
-                  <h2 className="text-lg font-medium">{course.teacher.name}</h2>
+                  <h2 className="text-lg font-medium">{course.teacherName}</h2>
                   <div className="flex items-center text-amber-500 mb-1">
                     <Star className="h-4 w-4 fill-current mr-1" />
-                    <span>{course.teacher.rating.toFixed(1)}</span>
-                    <span className="text-sm text-gray-500 ml-1">
-                      ({course.teacher.reviewCount} avis)
-                    </span>
+                    <span>4.8</span>
                   </div>
-                  <Link to={`/teachers/${course.teacherId}`}>
+                  <Link to={`/teacher/profile/${course.teacherId}`}>
                     <Button variant="link" size="sm" className="p-0 h-auto">
                       Voir le profil
                     </Button>
@@ -105,42 +134,28 @@ function CourseDetailPage() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-medium mb-3">Actions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     {course.meetingLink && (
-                      <Link to={course.meetingLink} target="_blank">
-                        <Button fullWidth className="justify-center">
-                          <Video className="h-5 w-5 mr-2" />
-                          Rejoindre le cours
-                        </Button>
-                      </Link>
+                      <Button 
+                        fullWidth 
+                        className="justify-center"
+                        onClick={() => window.open(course.meetingLink, '_blank')}
+                      >
+                        <Video className="h-5 w-5 mr-2" />
+                        Rejoindre le cours
+                      </Button>
                     )}
-                    <Button variant="secondary" fullWidth className="justify-center">
-                      <MessageSquare className="h-5 w-5 mr-2" />
-                      Contacter le professeur
+                    <Button 
+                      variant="secondary" 
+                      fullWidth 
+                      className="justify-center"
+                    >
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Contacter le professeur
                     </Button>
                   </div>
                 </div>
-                
-                {course.materials && course.materials.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-medium mb-3">Matériel de cours</h3>
-                    <Card>
-                      <CardContent className="p-4">
-                        <ul className="space-y-2">
-                          {course.materials.map((material, index) => (
-                            <li key={index} className="flex items-center">
-                              <FileText className="h-5 w-5 text-gray-400 mr-2" />
-                              <a href="#" className="text-primary-600 hover:underline">
-                                {material}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-                
+
                 <div>
                   <h3 className="text-lg font-medium mb-3">Détails du cours</h3>
                   <Card>
@@ -148,19 +163,15 @@ function CourseDetailPage() {
                       <dl className="space-y-2">
                         <div className="flex">
                           <dt className="w-1/3 text-gray-500">Type de cours:</dt>
-                          <dd>Individuel</dd>
+                          <dd>{course.type === 'individual' ? 'Individuel' : 'Groupe'}</dd>
                         </div>
                         <div className="flex">
                           <dt className="w-1/3 text-gray-500">Niveau:</dt>
-                          <dd>Terminale</dd>
+                          <dd>{course.level}</dd>
                         </div>
                         <div className="flex">
                           <dt className="w-1/3 text-gray-500">Matière:</dt>
-                          <dd>{course.teacher.subjects[0]?.name || 'Non spécifié'}</dd>
-                        </div>
-                        <div className="flex">
-                          <dt className="w-1/3 text-gray-500">Prix:</dt>
-                          <dd>{course.teacher.hourlyRate}€ /heure</dd>
+                          <dd>{course.subject.map(s => s.name).join(', ')}</dd>
                         </div>
                       </dl>
                     </CardContent>
